@@ -1,0 +1,2023 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>AI PPT组件生成器</title>
+    <link href="https://picture-search.tiangong.cn/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"/>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white;
+            min-height: 100vh;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 350px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .preview-area {
+            flex: 1;
+            background: rgba(30, 41, 59, 0.3);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .input-section {
+            margin-bottom: 25px;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 8px;
+        }
+
+        /* 输入区域头部样式 */
+        .input-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        /* 简化的Demo区域样式 */
+        .demo-mini {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .demo-mini i.fa-lightbulb {
+            color: #fbbf24;
+            font-size: 14px;
+        }
+
+        .demo-mini span {
+            color: #cbd5e1;
+            font-weight: 500;
+        }
+
+        .demo-mini-btn {
+            padding: 3px 5px;
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            border-radius: 4px;
+            color: #10b981;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .demo-mini-btn:hover {
+            background: rgba(16, 185, 129, 0.3);
+            border-color: #10b981;
+            transform: scale(1.05);
+        }
+
+        .demo-mini-btn:active {
+            transform: scale(0.95);
+        }
+
+        .demo-mini-btn i {
+            font-size: 10px;
+        }
+
+        /* 输入区域整体样式 */
+        .input-area {
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            border-radius: 8px;
+            background: rgba(30, 41, 59, 0.5);
+            overflow: hidden;
+        }
+
+        .input-area:focus-within {
+            border-color: #3b82f6;
+        }
+
+        .text-input {
+            width: 100%;
+            height: 120px;
+            padding: 12px;
+            border: none;
+            border-radius: 0;
+            background: transparent;
+            color: white;
+            font-size: 14px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .text-input:focus {
+            outline: none;
+        }
+
+        /* 剪贴板功能样式 */
+        .clipboard-section {
+            border-top: 1px solid rgba(148, 163, 184, 0.2);
+            margin: 0;
+        }
+
+        .clipboard-btn {
+            width: 100%;
+            padding: 8px 12px;
+            background: rgba(30, 41, 59, 0.3);
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #94a3b8;
+            font-size: 12px;
+        }
+
+        .clipboard-btn:hover {
+            background: rgba(16, 185, 129, 0.1);
+            color: #e2e8f0;
+        }
+
+        .clipboard-btn:active {
+            transform: translateY(1px);
+        }
+
+        .clipboard-icon {
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #10b981;
+            flex-shrink: 0;
+        }
+
+        .clipboard-text {
+            font-weight: 500;
+            color: #e2e8f0;
+            flex: 1;
+        }
+
+        .clipboard-hint {
+            font-size: 10px;
+            color: #64748b;
+            opacity: 0.8;
+        }
+
+        .clipboard-preview {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(30, 41, 59, 0.3);
+            border-radius: 8px;
+        }
+
+        .clipboard-preview img {
+            width: 100%;
+            max-height: 200px;
+            object-fit: contain;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        .clipboard-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            background: rgba(148, 163, 184, 0.2);
+            color: #cbd5e1;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(148, 163, 184, 0.3);
+        }
+
+
+
+        .processing-indicator {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 6px;
+            color: #10b981;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .processing-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid transparent;
+            border-top: 2px solid currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .component-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+
+        .component-option {
+            padding: 15px;
+            border: 2px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            background: rgba(30, 41, 59, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .component-option:hover {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .component-option.selected {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.2);
+        }
+
+        .component-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 6px;
+            background: rgba(59, 130, 246, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #3b82f6;
+            font-size: 18px;
+        }
+
+        .component-info h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 2px;
+        }
+
+        .component-info p {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .style-controls {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-label {
+            display: block;
+            font-size: 12px;
+            color: #cbd5e1;
+            margin-bottom: 5px;
+        }
+
+        .control-input {
+            width: 100%;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            background: rgba(30, 41, 59, 0.5);
+            color: white;
+            font-size: 12px;
+        }
+
+        .color-picker {
+            width: 100%;
+            height: 35px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #2563eb;
+        }
+
+        .btn-primary:disabled {
+            background: #64748b;
+            cursor: not-allowed;
+        }
+
+        .loading-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid transparent;
+            border-top: 2px solid currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .preview-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 8px;
+            background: white;
+        }
+
+        .empty-preview {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #94a3b8;
+            text-align: center;
+        }
+
+        .empty-preview i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #e2e8f0;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .style-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 6px;
+        }
+
+        .style-option:hover {
+            background: rgba(148, 163, 184, 0.1);
+        }
+
+        .style-option.active {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+
+        .style-preview {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+        }
+
+
+
+
+
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- 侧边栏 -->
+        <div class="sidebar">
+            <h1 class="text-xl font-bold mb-6">AI PPT组件生成器</h1>
+            
+
+            
+            <div class="input-section">
+                <div class="input-header">
+                    <label class="input-label">输入内容</label>
+                    
+                    <!-- 简化的Demo区域 -->
+                    <div class="demo-mini">
+                        <i class="fas fa-lightbulb" title="试试这个示例"></i>
+                        <span>试试这个示例</span>
+                        <button class="demo-mini-btn" id="demoRandomBtn2" title="随机切换示例">
+                            <i class="fas fa-dice"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="input-area">
+                    <textarea 
+                        class="text-input" 
+                        id="userInput" 
+                        placeholder="输入您想要制作PPT的内容，AI将自动整理和生成视觉化表达"
+                    ></textarea>
+                    
+                    <!-- 剪贴板功能区域 -->
+                    <div class="clipboard-section">
+                        <button class="clipboard-btn" id="clipboardBtn">
+                            <div class="clipboard-icon">
+                                <i class="fas fa-clipboard"></i>
+                            </div>
+                            <div class="clipboard-text">从剪贴板图片识别文字</div>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="clipboard-preview" id="clipboardPreview" style="display: none;">
+                    <img id="previewImage" alt="剪贴板图片预览" />
+                    <div class="clipboard-actions">
+                        <button class="btn-small btn-primary" id="processClipboardBtn">识别文字</button>
+                        <button class="btn-small btn-secondary" id="cancelClipboardBtn">取消</button>
+                    </div>
+                </div>
+                <div class="processing-indicator" id="processingIndicator">
+                    <div class="processing-spinner"></div>
+                    <span>正在识别图片中的文字...</span>
+                </div>
+
+                
+            </div>
+
+            <!-- 组件选择 -->
+            <div class="input-section">
+                <label class="input-label">选择组件</label>
+                <div class="component-grid">
+                    <div class="component-option" data-component="core-value">
+                        <div class="component-icon">
+                            <i class="fas fa-list-ul"></i>
+                        </div>
+                        <div class="component-info">
+                            <h3>图标列表</h3>
+                            <p>带图标的要点列表，适合展示特色功能</p>
+                        </div>
+                    </div>
+                    
+                    <div class="component-option" data-component="ai-transform">
+                        <div class="component-icon">
+                            <i class="fas fa-clipboard-list"></i>
+                        </div>
+                        <div class="component-info">
+                            <h3>简约列表</h3>
+                            <p>简洁的步骤或要点列表，适合流程展示</p>
+                        </div>
+                    </div>
+                    
+                    <div class="component-option" data-component="table-component">
+                        <div class="component-icon">
+                            <i class="fas fa-table"></i>
+                        </div>
+                        <div class="component-info">
+                            <h3>数据表格</h3>
+                            <p>结构化表格，适合功能对比和数据展示</p>
+                        </div>
+                    </div>
+                    
+                    <div class="component-option" data-component="chart-component">
+                        <div class="component-icon">
+                            <i class="fas fa-chart-bar"></i>
+                        </div>
+                        <div class="component-info">
+                            <h3>柱状图表</h3>
+                            <p>可视化数据图表，适合量化指标展示</p>
+                        </div>
+                    </div>
+                    
+                    <div class="component-option" data-component="left-right-component">
+                        <div class="component-icon">
+                            <i class="fas fa-balance-scale"></i>
+                        </div>
+                        <div class="component-info">
+                            <h3>优劣对比</h3>
+                            <p>左右分栏对比展示，适合方案比较</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 生成按钮 -->
+            <button class="btn btn-primary" id="generateBtn">
+                <i class="fas fa-magic"></i>
+                <span>生成预览</span>
+            </button>
+        </div>
+
+        <!-- 主内容区域 -->
+        <div class="main-content">
+            <div class="preview-area" id="previewArea">
+                <div class="empty-preview">
+                    <i class="fas fa-file-powerpoint"></i>
+                    <h3>AI PPT组件生成器</h3>
+                    <p>输入内容，选择组件，即可生成专业的PPT页面</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class AIPPTGenerator {
+            constructor() {
+                this.selectedComponent = 'core-value'; // 默认选择图标列表组件
+                this.generatedContent = null;
+                this.initDemoCases();
+                this.initEventListeners();
+                this.initDefaultSelection();
+                this.initClipboardCapture();
+            }
+
+            initDefaultSelection() {
+                // 默认选择图标列表组件
+                setTimeout(() => {
+                    const defaultComponent = document.querySelector('[data-component="core-value"]');
+                    if (defaultComponent) {
+                        defaultComponent.classList.add('selected');
+                    }
+                }, 100);
+            }
+
+            initDemoCases() {
+                // Demo案例数据
+                this.demoCases = {
+                    'core-value': [
+                        '展示我们公司的核心价值观：创新驱动、客户至上、团队协作'
+                    ],
+                    'ai-transform': [
+                        '软件开发标准流程：需求分析→架构设计→编码实现→测试上线'
+                    ],
+                    'table-component': [
+                        '对比三种云服务方案：阿里云（标准版，2980元/年，4核8G，99.9%可用性），腾讯云（专业版，3200元/年，8核16G，99.8%可用性），华为云（企业版，3800元/年，16核32G，99.95%可用性）'
+                    ],
+                    'chart-component': [
+                        '展示2023年各季度销售额：Q1季度285万，Q2季度320万，Q3季度378万，Q4季度425万'
+                    ],
+                    'left-right-component': [
+                        '对比传统办公与远程办公：传统办公优势（面对面沟通、团队氛围好、协作效率高），劣势（通勤时间长、成本高、地点限制）；远程办公优势（时间灵活、成本低、覆盖面广），劣势（沟通成本高、监管困难、团队凝聚力弱）'
+                    ]
+                };
+            }
+
+
+
+            showRandomDemo() {
+                const allComponents = ['core-value', 'ai-transform', 'table-component', 'chart-component', 'left-right-component'];
+                
+                // 获取除当前组件外的其他组件
+                const otherComponents = allComponents.filter(comp => comp !== this.selectedComponent);
+                
+                // 随机选择一个其他组件
+                const randomIndex = Math.floor(Math.random() * otherComponents.length);
+                const randomComponent = otherComponents[randomIndex];
+                
+                // 获取随机组件的demo案例
+                const randomCases = this.demoCases[randomComponent] || [];
+                if (randomCases.length > 0) {
+                    const randomCase = randomCases[0]; // 取第一个案例
+                    
+                    // 填充到输入框
+                    const inputField = document.getElementById('userInput');
+                    inputField.value = randomCase;
+                    
+                    // 聚焦到输入框
+                    inputField.focus();
+                    inputField.setSelectionRange(inputField.value.length, inputField.value.length);
+                    
+                    // 自动切换到对应的组件
+                    this.switchToComponent(randomComponent);
+                    
+                    // 显示通知
+                    const componentNames = {
+                        'core-value': '图标列表',
+                        'ai-transform': '简约列表',
+                        'table-component': '数据表格',
+                        'chart-component': '柱状图表',
+                        'left-right-component': '优劣对比'
+                    };
+                    
+                    this.showNotification(`已切换到"${componentNames[randomComponent]}"组件示例`, 'info');
+                }
+            }
+
+            switchToComponent(componentType) {
+                // 清除所有组件的选中状态
+                document.querySelectorAll('.component-option').forEach(option => {
+                    option.classList.remove('selected');
+                });
+                
+                // 选中目标组件
+                const targetComponent = document.querySelector(`[data-component="${componentType}"]`);
+                if (targetComponent) {
+                    targetComponent.classList.add('selected');
+                }
+                
+                // 更新选中的组件
+                this.selectedComponent = componentType;
+            }
+
+            initEventListeners() {
+                // 组件选择
+                document.querySelectorAll('.component-option').forEach(option => {
+                    option.addEventListener('click', (e) => {
+                        document.querySelectorAll('.component-option').forEach(o => o.classList.remove('selected'));
+                        option.classList.add('selected');
+                        this.selectedComponent = option.dataset.component;
+                    });
+                });
+
+                // 生成按钮
+                document.getElementById('generateBtn').addEventListener('click', () => {
+                    this.generatePreview();
+                });
+
+                // Demo示例按钮（简化版随机按钮）
+                const demoRandomBtn2 = document.getElementById('demoRandomBtn2');
+                if (demoRandomBtn2) {
+                    demoRandomBtn2.addEventListener('click', () => {
+                        this.showRandomDemo();
+                    });
+                }
+            }
+
+            initClipboardCapture() {
+                const clipboardBtn = document.getElementById('clipboardBtn');
+                const clipboardPreview = document.getElementById('clipboardPreview');
+                const previewImage = document.getElementById('previewImage');
+                const processClipboardBtn = document.getElementById('processClipboardBtn');
+                const cancelClipboardBtn = document.getElementById('cancelClipboardBtn');
+                const processingIndicator = document.getElementById('processingIndicator');
+
+                // 剪贴板按钮点击事件
+                clipboardBtn.addEventListener('click', async () => {
+                    try {
+                        await this.readClipboardImage();
+                    } catch (error) {
+                        console.error('读取剪贴板失败:', error);
+                        this.showNotification('读取剪贴板失败，请重试', 'error');
+                    }
+                });
+
+                // 处理剪贴板图片按钮
+                processClipboardBtn.addEventListener('click', async () => {
+                    const imageSrc = previewImage.src;
+                    if (imageSrc) {
+                        try {
+                            processingIndicator.style.display = 'flex';
+                            clipboardPreview.style.display = 'none';
+                            
+                            // 调用AI API进行OCR识别
+                            const extractedText = await this.extractTextFromImage(imageSrc);
+                            
+                            if (extractedText && extractedText.trim()) {
+                                const userInput = document.getElementById('userInput');
+                                userInput.value = extractedText.trim();
+                                userInput.focus();
+                                this.showNotification('文字识别成功！', 'success');
+                            } else {
+                                this.showNotification('未能识别出文字内容', 'warning');
+                            }
+                        } catch (error) {
+                            console.error('文字识别失败:', error);
+                            this.showNotification('文字识别失败，请重试', 'error');
+                        } finally {
+                            processingIndicator.style.display = 'none';
+                        }
+                    }
+                });
+
+                // 取消剪贴板图片按钮
+                cancelClipboardBtn.addEventListener('click', () => {
+                    clipboardPreview.style.display = 'none';
+                    previewImage.src = '';
+                });
+
+                // Ctrl+V快捷键粘贴剪贴板图片
+                document.addEventListener('keydown', async (e) => {
+                    if (e.ctrlKey && e.key === 'v') {
+                        // 只有在输入框没有焦点时才触发剪贴板读取
+                        const activeElement = document.activeElement;
+                        if (activeElement.tagName !== 'TEXTAREA' && activeElement.tagName !== 'INPUT') {
+                            e.preventDefault();
+                            try {
+                                await this.readClipboardImage();
+                            } catch (error) {
+                                console.error('快捷键读取剪贴板失败:', error);
+                            }
+                        }
+                    }
+                });
+            }
+
+            async readClipboardImage() {
+                try {
+                    // 检查浏览器是否支持Clipboard API
+                    if (!navigator.clipboard || !navigator.clipboard.read) {
+                        throw new Error('浏览器不支持剪贴板读取功能');
+                    }
+
+                    this.showNotification('正在读取剪贴板...', 'info');
+
+                    // 读取剪贴板内容
+                    const clipboardItems = await navigator.clipboard.read();
+                    
+                    let imageFound = false;
+                    
+                    for (const clipboardItem of clipboardItems) {
+                        for (const type of clipboardItem.types) {
+                            if (type.startsWith('image/')) {
+                                const blob = await clipboardItem.getType(type);
+                                
+                                // 将blob转换为data URL
+                                const reader = new FileReader();
+                                reader.onload = (e) => {
+                                    const imageDataUrl = e.target.result;
+                                    
+                                    // 显示预览
+                                    const previewImage = document.getElementById('previewImage');
+                                    const clipboardPreview = document.getElementById('clipboardPreview');
+                                    
+                                    previewImage.src = imageDataUrl;
+                                    clipboardPreview.style.display = 'block';
+                                    
+                                    this.showNotification('剪贴板图片读取成功！可以开始识别文字', 'success');
+                                };
+                                reader.readAsDataURL(blob);
+                                
+                                imageFound = true;
+                                break;
+                            }
+                        }
+                        if (imageFound) break;
+                    }
+                    
+                    if (!imageFound) {
+                        this.showNotification('剪贴板中没有找到图片，请先复制图片', 'warning');
+                    }
+                    
+                } catch (error) {
+                    console.error('读取剪贴板失败:', error);
+                    
+                    if (error.name === 'NotAllowedError') {
+                        this.showNotification('需要剪贴板读取权限，请在浏览器中允许', 'warning');
+                    } else if (error.name === 'NotSupportedError') {
+                        this.showNotification('浏览器不支持剪贴板读取功能', 'error');
+                    } else {
+                        this.showNotification('读取剪贴板失败：' + error.message, 'error');
+                    }
+                    throw error;
+                }
+            }
+
+            async extractTextFromImage(base64Image) {
+                // 使用Vercel Serverless Function代理调用Azure OpenAI的Vision API进行OCR
+                const endpoint = '/api/openai';
+
+                const requestBody = {
+                    messages: [
+                        {
+                            role: "system",
+                            content: "你是一个专业的OCR助手。请仔细识别图片中的所有文字内容，并将其准确地转换为文本。保持原有的段落结构和格式，不要添加任何解释或分析，只返回识别出的文字内容。"
+                        },
+                        {
+                            role: "user",
+                            content: [
+                                {
+                                    type: "text",
+                                    text: "请识别这张图片中的所有文字内容："
+                                },
+                                {
+                                    type: "image_url",
+                                    image_url: {
+                                        url: base64Image
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    max_tokens: 1000,
+                    temperature: 0.1
+                };
+
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(requestBody)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API响应错误: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    return data.choices[0].message.content;
+                    
+                } catch (error) {
+                    console.error('OCR API调用失败:', error);
+                    throw error;
+                }
+            }
+
+            showNotification(message, type = 'info') {
+                // 创建通知元素
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    padding: 12px 16px;
+                    border-radius: 6px;
+                    color: white;
+                    font-size: 14px;
+                    z-index: 1000;
+                    opacity: 0;
+                    transition: opacity 0.3s ease;
+                `;
+
+                // 根据类型设置颜色
+                switch (type) {
+                    case 'success':
+                        notification.style.background = '#10b981';
+                        break;
+                    case 'warning':
+                        notification.style.background = '#f59e0b';
+                        break;
+                    case 'error':
+                        notification.style.background = '#ef4444';
+                        break;
+                    default:
+                        notification.style.background = '#3b82f6';
+                }
+
+                notification.textContent = message;
+                document.body.appendChild(notification);
+
+                // 显示动画
+                setTimeout(() => {
+                    notification.style.opacity = '1';
+                }, 100);
+
+                // 3秒后自动消失
+                setTimeout(() => {
+                    notification.style.opacity = '0';
+                    setTimeout(() => {
+                        document.body.removeChild(notification);
+                    }, 300);
+                }, 3000);
+            }
+
+            async generatePreview() {
+                const userInput = document.getElementById('userInput').value.trim();
+                
+                if (!userInput) {
+                    alert('请输入内容');
+                    return;
+                }
+
+                if (!this.selectedComponent) {
+                    alert('请选择组件');
+                    return;
+                }
+
+                const generateBtn = document.getElementById('generateBtn');
+                const btnText = generateBtn.querySelector('span');
+                const btnIcon = generateBtn.querySelector('i');
+                
+                // 显示加载状态
+                generateBtn.disabled = true;
+                btnIcon.className = 'loading-spinner';
+                btnText.textContent = '生成中...';
+
+                try {
+                    // 调用Azure OpenAI API
+                    const structuredContent = await this.callAzureOpenAI(userInput, this.selectedComponent);
+                    
+                    console.log('生成的内容:', structuredContent);
+                    
+                    // 生成预览
+                    this.generatedContent = structuredContent;
+                    this.renderPreview();
+                    
+                } catch (error) {
+                    console.error('生成失败:', error);
+                    alert('生成失败，请重试: ' + error.message);
+                } finally {
+                    // 恢复按钮状态
+                    generateBtn.disabled = false;
+                    btnIcon.className = 'fas fa-magic';
+                    btnText.textContent = '生成预览';
+                }
+            }
+
+            async callAzureOpenAI(userInput, componentType) {
+                // 使用Vercel Serverless Function代理调用Azure OpenAI API
+                const endpoint = '/api/openai';
+                
+                // 构建prompt
+                const prompt = this.buildPrompt(userInput, componentType);
+                
+                // 检查是否使用了调试器的prompt
+                const debuggedPromptData = localStorage.getItem('debuggedPrompt');
+                if (debuggedPromptData) {
+                    try {
+                        const promptConfig = JSON.parse(debuggedPromptData);
+                        const oneHour = 60 * 60 * 1000;
+                        if (promptConfig.componentType === componentType && 
+                            (Date.now() - promptConfig.timestamp) < oneHour) {
+                            console.log('正在使用调试器中优化的prompt');
+                            // 可以在这里添加UI提示
+                            this.showDebuggerPromptNotice();
+                        }
+                    } catch (e) {
+                        // 忽略解析错误
+                    }
+                }
+                
+                console.log('发送给AI的prompt:', prompt);
+
+                const requestBody = {
+                    messages: [
+                        {
+                            role: "system",
+                            content: "你是一个专业的PPT内容生成助手，擅长根据用户输入生成结构化的演示文稿内容。请始终返回有效的JSON格式数据，确保内容专业、准确、有条理。不要包含任何markdown格式或其他装饰文字，只返回纯JSON。"
+                        },
+                        {
+                            role: "user",
+                            content: prompt
+                        }
+                    ],
+                    max_tokens: 1500,
+                    temperature: 0.7
+                };
+
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(requestBody)
+                    });
+
+                    if (!response.ok) {
+                        console.error('API响应错误:', response.status, response.statusText);
+                        // 如果API调用失败，回退到模拟数据
+                        return this.generateMockData(userInput, componentType);
+                    }
+
+                    const data = await response.json();
+                    const aiResponse = data.choices[0].message.content;
+                    
+                    console.log('AI原始响应:', aiResponse);
+                    
+                    // 解析AI响应为JSON
+                    try {
+                        // 清理响应内容，移除可能的markdown标记
+                        let cleanResponse = aiResponse.trim();
+                        if (cleanResponse.startsWith('```json')) {
+                            cleanResponse = cleanResponse.replace(/^```json\s*/i, '').replace(/\s*```$/, '');
+                        } else if (cleanResponse.startsWith('```')) {
+                            cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+                        }
+                        
+                        const jsonData = JSON.parse(cleanResponse);
+                        console.log('解析成功的JSON数据:', jsonData);
+                        return jsonData;
+                    } catch (parseError) {
+                        console.error('解析AI响应失败:', parseError);
+                        console.log('原始响应内容:', aiResponse);
+                        // 如果解析失败，回退到模拟数据
+                        return this.generateMockData(userInput, componentType);
+                    }
+                } catch (error) {
+                    console.error('API调用错误:', error);
+                    // 如果网络错误，回退到模拟数据
+                    return this.generateMockData(userInput, componentType);
+                }
+            }
+
+            buildPrompt(userInput, componentType) {
+                // 优先使用代码中的最新模板，确保手动修改能立即生效
+                // 只有在明确从调试器传递且时间很新时才使用调试器的prompt
+                let useDebuggerPrompt = false;
+                const debuggedPromptData = localStorage.getItem('debuggedPrompt');
+                if (debuggedPromptData) {
+                    try {
+                        const promptConfig = JSON.parse(debuggedPromptData);
+                        // 只有5分钟内的调试器prompt才会被使用，超时后自动使用代码模板
+                        const fiveMinutes = 5 * 60 * 1000;
+                        if (promptConfig.componentType === componentType && 
+                            (Date.now() - promptConfig.timestamp) < fiveMinutes) {
+                            console.log('使用调试器中的prompt (5分钟内有效):', promptConfig.prompt);
+                            // 清除localStorage，避免重复使用
+                            localStorage.removeItem('debuggedPrompt');
+                            return promptConfig.prompt;
+                        } else {
+                            // 超时自动清除
+                            localStorage.removeItem('debuggedPrompt');
+                            console.log('调试器prompt已超时，使用代码中的最新模板');
+                        }
+                    } catch (e) {
+                        localStorage.removeItem('debuggedPrompt');
+                        console.log('解析调试器prompt失败，使用代码中的最新模板');
+                    }
+                }
+                
+                console.log('使用代码中的Prompt模板 - 组件类型:', componentType);
+                
+                // 默认prompt模板
+                const promptTemplates = {
+                    'core-value': `请基于以下用户输入，生成带图标的列表组件JSON数据：
+
+用户输入：${userInput}
+
+请生成JSON格式的数据，包含以下结构：
+{
+  "title": "列表标题",
+  "values": [
+    {
+      "title": "要点标题",
+      "description": "要点详细描述"
+    }
+  ]
+}
+
+要求：
+1. 从用户输入中提取关键要点，每个要点要具体且有实用价值
+2. 关键要点数目要根据用户输入的内容决定
+3. 要点标题要简洁明了
+4. 描述要具体说明该要点的具体内容，简洁、有深度。
+5. 返回纯JSON格式，不要包含其他文字`,
+
+                    'ai-transform': `请基于以下用户输入，生成简约列表组件的JSON数据：
+
+用户输入：${userInput}
+
+请生成JSON格式的数据，包含以下结构：
+{
+  "title": "列表标题",
+  "steps": [
+    {
+      "title": "要点标题",
+      "description": "简洁的描述说明"
+    }
+  ]
+}
+
+要求：
+1. 从用户输入中分析出几个要点，每个要点要具体且有深度
+2. 关键要点数目要根据用户输入的内容决定
+3. 每个标题要简洁明确，描述要简练但清晰
+4. 返回纯JSON格式，不要包含其他文字`,
+
+                    'table-component': `请基于以下用户输入，生成数据表格组件的JSON数据：
+
+用户输入：${userInput}
+
+请生成JSON格式的数据，包含以下结构：
+{
+  "title": "表格标题",
+  "headers": ["列标题1", "列标题2", "列标题3", ...],
+  "rows": [
+    ["行1列1", "行1列2", "行1列3", ...],
+    ["行2列1", "行2列2", "行2列3", ...],
+    ...
+  ]
+}
+
+要求：
+1. 表格的行数和列数完全由用户输入的内容决定，没有固定限制
+2. 根据用户输入智能判断最适合的表格结构（如：2-10列，2-15行）
+3. 列标题要准确反映数据类型（如：姓名、年龄、地区、销量、价格等）
+4. 数据内容要真实、准确，符合用户输入的主题
+5. 如果是对比类内容，第一列通常是对比项目名称
+6. 返回纯JSON格式，不要包含其他文字`,
+
+                    'chart-component': `请基于以下用户输入，生成柱状图表组件的JSON数据：
+
+用户输入：${userInput}
+
+请生成JSON格式的数据，包含以下结构：
+{
+  "title": "图表标题",
+  "description": "图表描述说明",
+  "unit": "数值单位",
+  "chartData": [
+    {"category": "指标名称1", "value": 数值1},
+    {"category": "指标名称2", "value": 数值2}
+  ]
+}
+
+要求：
+1. 从用户输入中提取几个可量化的指标，指标数量根据用户输入决定（建议3-6个）
+2. 为每个指标分配合理的绝对数值（不是百分比）
+3. 数值应该是具体的数量、金额、分数等绝对值
+4. 根据数据内容自行判断并设置合适的单位（如：万元、亿元、万人、千人、分、个、台、套等）
+5. 单位应该是绝对数值单位，不要使用百分比
+6. 数值要符合实际情况，具有参考价值
+7. 返回纯JSON格式，不要包含其他文字`,
+
+                    'left-right-component': `请基于以下用户输入，生成优劣对比组件的JSON数据：
+
+用户输入：${userInput}
+
+请生成JSON格式的数据，包含以下结构：
+{
+  "title": "对比标题",
+  "description": "对比说明",
+  "leftSide": {
+    "title": "优势/正面标题",
+    "icon": "thumbs-up",
+    "items": ["优势1", "优势2", "优势3"]
+  },
+  "rightSide": {
+    "title": "劣势/负面标题", 
+    "icon": "thumbs-down",
+    "items": ["劣势1", "劣势2", "劣势3"]
+  }
+}
+
+要求：
+1. 左侧展示优势、好处、正面要素，右侧展示劣势、缺点、负面要素
+2. 每侧列出3-4个要点，要点要具体明确
+3. 对比要客观真实，有实际参考价值
+4. 返回纯JSON格式，不要包含其他文字`
+                };
+
+                return promptTemplates[componentType] || `请基于用户输入"${userInput}"，为${componentType}组件生成相应的JSON数据。`;
+            }
+
+            generateMockData(userInput, componentType) {
+                const mockDataTemplates = {
+                    'core-value': {
+                        "title": "核心价值观",
+                        "values": [
+                            {"title": "创新驱动", "description": "持续推动技术创新，引领行业发展方向，为用户创造更多价值"},
+                            {"title": "用户至上", "description": "始终以用户需求为中心，提供优质的产品和服务体验"},
+                            {"title": "团队协作", "description": "倡导开放合作的团队文化，共同实现更大的目标"},
+                            {"title": "诚信负责", "description": "秉承诚实守信的原则，对每一个承诺负责到底"}
+                        ]
+                    },
+                    'ai-transform': {
+                        "title": "关键流程步骤",
+                        "steps": [
+                            {"title": "第一步", "description": "分析当前情况，明确目标和需求"},
+                            {"title": "第二步", "description": "制定详细的执行计划和时间安排"}
+                        ]
+                    },
+                    'table-component': {
+                        "title": "功能对比分析",
+                        "headers": ["功能特性", "基础版", "专业版", "企业版"],
+                        "rows": [
+                            ["AI内容生成", "支持", "支持", "支持"],
+                            ["模板数量", "10+", "50+", "100+"],
+                            ["导出格式", "PDF", "PDF/PPT", "全格式"],
+                            ["协作功能", "不支持", "支持", "支持"],
+                            ["API接口", "不支持", "不支持", "支持"]
+                        ]
+                    },
+                    'chart-component': {
+                        "title": "销售业绩统计",
+                        "description": "展示关键业务指标的具体数值",
+                        "unit": "万元",
+                        "chartData": [
+                            {"category": "产品销售", "value": 1250},
+                            {"category": "服务收入", "value": 850},
+                            {"category": "合作收益", "value": 620},
+                            {"category": "其他收入", "value": 380}
+                        ]
+                    },
+                    'left-right-component': {
+                        "title": "解决方案对比",
+                        "description": "对比不同解决方案的优劣势，为选择提供参考",
+                        "leftSide": {
+                            "title": "AI解决方案优势",
+                            "icon": "thumbs-up",
+                            "items": ["自动化程度高", "节省人力成本", "24小时不间断服务", "持续学习优化"]
+                        },
+                        "rightSide": {
+                            "title": "传统方案局限",
+                            "icon": "thumbs-down",
+                            "items": ["人工成本高", "易出现错误", "效率相对较低", "难以标准化"]
+                        }
+                    }
+                };
+
+                // 深拷贝模板数据
+                let result = JSON.parse(JSON.stringify(mockDataTemplates[componentType]));
+                
+                // 智能分析用户输入内容
+                const userInputLower = userInput.toLowerCase();
+                const sentences = userInput.split(/[。！？.!?]/).filter(s => s.trim().length > 0);
+                
+                // 根据组件类型和用户输入智能生成内容
+                if (componentType === 'core-value') {
+                    // 核心价值组件：从用户输入中提取关键价值点
+                    if (userInputLower.includes('ai') || userInputLower.includes('人工智能')) {
+                        result.title = "AI核心价值";
+                        result.values = [
+                            {"title": "高效创作", "description": "极大提高内容文档的制作效率，将小时级工作缩短至分钟级"},
+                            {"title": "专业设计", "description": "无需设计技能，也能获得专业水准的视觉效果与排版"},
+                            {"title": "内容智能化", "description": "自动生成内容大纲，提供数据可视化与多媒体整合"},
+                            {"title": "便捷易用", "description": "简化操作流程，让每个人都能轻松制作专业演示文稿"}
+                        ];
+                    } else if (userInputLower.includes('产品') || userInputLower.includes('功能')) {
+                        result.title = "产品核心价值";
+                        result.values = [
+                            {"title": "功能完善", "description": "提供全面的功能模块，满足不同场景需求"},
+                            {"title": "性能卓越", "description": "高性能处理能力，确保流畅的用户体验"},
+                            {"title": "易于使用", "description": "直观的界面设计，降低学习成本"},
+                            {"title": "持续创新", "description": "不断更新优化，保持行业领先地位"}
+                        ];
+                    } else {
+                        // 智能从用户输入中提取关键词作为价值点，动态决定数量
+                        const keywords = this.extractKeywords(userInput);
+                        if (keywords.length >= 1) {
+                            result.title = this.generateTitleFromKeywords(keywords);
+                            
+                            // 根据内容复杂度智能决定项数
+                            const itemCount = this.determineOptimalItemCount(userInput, keywords);
+                            result.values = this.generateValuesFromKeywords(keywords, userInput, itemCount);
+                        } else {
+                            // 如果没有明确关键词，根据输入长度和复杂度生成
+                            const sentences = userInput.split(/[。！？.!?]/).filter(s => s.trim().length > 5);
+                            let itemCount = Math.min(Math.max(sentences.length, 2), 6);
+                            
+                            // 如果句子太少，尝试按逗号分割获取更多要点
+                            if (itemCount < 3) {
+                                const phrases = userInput.split(/[，,、]/).filter(s => s.trim().length > 3);
+                                if (phrases.length >= 3) {
+                                    itemCount = Math.min(phrases.length, 6);
+                                    result.title = "核心要点";
+                                    result.values = phrases.slice(0, itemCount).map((phrase, index) => ({
+                                        title: `要点${index + 1}`,
+                                        description: phrase.trim()
+                                    }));
+                                } else {
+                                    result.title = "要点总结";
+                                    result.values = sentences.slice(0, itemCount).map((sentence, index) => ({
+                                        title: `要点${index + 1}`,
+                                        description: sentence.trim()
+                                    }));
+                                }
+                            } else {
+                                result.title = "要点总结";
+                                result.values = sentences.slice(0, itemCount).map((sentence, index) => ({
+                                    title: `要点${index + 1}`,
+                                    description: sentence.trim()
+                                }));
+                            }
+                        }
+                    }
+                } else if (componentType === 'ai-transform') {
+                    // 简约列表组件：根据用户输入动态生成步骤，不预设场景
+                    const keywords = this.extractKeywords(userInput);
+                    const steps = this.generateStepsFromInput(userInput, keywords);
+                    
+                    if (steps.length > 0) {
+                        result.title = this.generateTitleFromKeywords(keywords) || "主要步骤";
+                        result.steps = steps;
+                    } else {
+                        // 如果无法生成步骤，使用通用格式
+                        result.title = "关键要点";
+                        result.steps = [
+                            {"title": "要点1", "description": "请提供更详细的内容以生成相关步骤"},
+                            {"title": "要点2", "description": "系统将根据您的输入智能分析并生成对应内容"}
+                        ];
+                    }
+                } else if (componentType === 'table-component') {
+                    // 表格组件：根据用户输入动态生成表格结构
+                    if (userInputLower.includes('人口') || userInputLower.includes('国家')) {
+                        result.title = "世界主要国家人口数据";
+                        result.headers = ["国家", "人口(亿)", "增长率(%)", "城镇化率(%)", "人口密度(人/km²)"];
+                        result.rows = [
+                            ["中国", "14.1", "0.3", "63.9", "148"],
+                            ["印度", "13.8", "1.0", "35.4", "464"],
+                            ["美国", "3.3", "0.4", "82.7", "36"],
+                            ["印尼", "2.7", "1.1", "56.0", "151"],
+                            ["巴西", "2.1", "0.8", "87.1", "25"]
+                        ];
+                    } else if (userInputLower.includes('销售') || userInputLower.includes('业绩')) {
+                        result.title = "季度销售业绩统计";
+                        result.headers = ["地区", "Q1销售额", "Q2销售额", "Q3销售额", "Q4销售额", "年度总计", "增长率"];
+                        result.rows = [
+                            ["华东", "1200万", "1350万", "1480万", "1620万", "5650万", "+15%"],
+                            ["华南", "980万", "1100万", "1250万", "1380万", "4710万", "+12%"],
+                            ["华北", "1050万", "1180万", "1290万", "1420万", "4940万", "+18%"]
+                        ];
+                    } else if (userInputLower.includes('学校') || userInputLower.includes('教育')) {
+                        result.title = "学校教育数据统计";
+                        result.headers = ["学校名称", "学生人数", "教师人数", "师生比", "升学率"];
+                        result.rows = [
+                            ["第一中学", "2400", "180", "1:13", "98.5%"],
+                            ["实验中学", "2100", "165", "1:13", "96.8%"],
+                            ["外国语学校", "1800", "150", "1:12", "99.2%"],
+                            ["职业技术学校", "3200", "220", "1:15", "85.6%"]
+                        ];
+                    } else if (userInputLower.includes('产品') || userInputLower.includes('功能')) {
+                        result.title = "产品功能对比";
+                        result.headers = ["功能特性", "基础版", "专业版", "企业版"];
+                        result.rows = [
+                            ["用户数量限制", "10人", "100人", "无限制"],
+                            ["存储空间", "1GB", "10GB", "100GB"],
+                            ["技术支持", "社区", "邮件", "专线"],
+                            ["API调用", "1000次/月", "10000次/月", "无限制"]
+                        ];
+                    } else {
+                        // 根据用户输入生成动态表格
+                        const keywords = this.extractKeywords(userInput);
+                        if (keywords.length >= 1) {
+                            const mainKeyword = keywords[0];
+                            // 根据关键词数量决定列数
+                            const columnCount = Math.min(Math.max(keywords.length + 1, 3), 6);
+                            
+                            result.title = `${mainKeyword}数据统计表`;
+                            result.headers = ["项目"];
+                            
+                            // 动态生成列标题
+                            for (let i = 1; i < columnCount; i++) {
+                                result.headers.push(keywords[i-1] || `指标${i}`);
+                            }
+                            
+                            // 动态生成行数据
+                            result.rows = [];
+                            const rowCount = Math.min(Math.max(keywords.length, 3), 8);
+                            for (let i = 0; i < rowCount; i++) {
+                                const row = [`项目${i+1}`];
+                                for (let j = 1; j < columnCount; j++) {
+                                    row.push(`数据${i+1}-${j}`);
+                                }
+                                result.rows.push(row);
+                            }
+                        }
+                    }
+                } else if (componentType === 'chart-component') {
+                    // 图表组件：根据用户输入生成数据，让大模型自行判断单位
+                    const keywords = this.extractKeywords(userInput);
+                    if (keywords.length >= 1) {
+                        const mainKeyword = keywords[0];
+                        result.title = `${mainKeyword}数据统计`;
+                        result.description = `展示${mainKeyword}相关的关键数据指标`;
+                        
+                        // 生成基础数据，让大模型或用户输入决定具体单位和数值
+                        result.chartData = keywords.slice(0, Math.min(keywords.length, 6)).map((keyword, index) => ({
+                            category: keyword,
+                            value: 100 + Math.floor(Math.random() * 500) // 生成100-600之间的随机数值
+                        }));
+                        
+                        // 默认使用通用单位，实际应该由AI大模型判断
+                        result.unit = "个";
+                    }
+                } else if (componentType === 'left-right-component') {
+                    // 左右对比组件：根据用户输入生成对比内容
+                    if (userInputLower.includes('ai') || userInputLower.includes('传统')) {
+                        result.title = "AI vs 传统制作方式";
+                        result.leftSide = {
+                            "title": "AI制作方式",
+                            "icon": "thumbs-up",
+                            "items": ["极大提高效率", "自动生成内容", "智能设计建议", "一键生成成品"]
+                        };
+                        result.rightSide = {
+                            "title": "传统制作方式",
+                            "icon": "thumbs-down",
+                            "items": ["耗时较长", "手动编辑", "需要设计技能", "重复性工作多"]
+                        };
+                    } else if (userInputLower.includes('移民')) {
+                        result.title = "移民优劣势分析";
+                        result.leftSide = {
+                            "title": "优势方",
+                            "icon": "thumbs-up",
+                            "items": ["拓展就业机会和发展空间", "接触多元文化提升视野", "享受更好的教育医疗资源", "为下一代提供更多机会"]
+                        };
+                        result.rightSide = {
+                            "title": "劣势方",
+                            "icon": "thumbs-down",
+                            "items": ["语言文化适应挑战", "远离家人朋友支持网络", "初期经济压力较大", "职业认证和重新起步困难"]
+                        };
+                    } else if (userInputLower.includes('旅游')) {
+                        result.title = "旅游优劣势分析";
+                        result.leftSide = {
+                            "title": "旅游优势",
+                            "icon": "thumbs-up",
+                            "items": ["开阔眼界增长见识", "释放压力放松身心", "体验不同文化风情", "增进人际关系交流"]
+                        };
+                        result.rightSide = {
+                            "title": "旅游劣势",
+                            "icon": "thumbs-down",
+                            "items": ["高额费用经济负担", "时间安排受到限制", "旅途疲劳身心消耗", "安全风险不确定性"]
+                        };
+                    } else {
+                        // 根据用户输入的关键词生成通用对比内容
+                        const keywords = this.extractKeywords(userInput);
+                        if (keywords.length >= 1) {
+                            const mainKeyword = keywords[0];
+                            result.title = `${mainKeyword}优劣势分析`;
+                            result.leftSide = {
+                                "title": "优势方面",
+                                "icon": "thumbs-up",
+                                "items": [`${mainKeyword}的主要优势1`, `${mainKeyword}的主要优势2`, `${mainKeyword}的主要优势3`]
+                            };
+                            result.rightSide = {
+                                "title": "劣势方面",
+                                "icon": "thumbs-down",
+                                "items": [`${mainKeyword}的主要劣势1`, `${mainKeyword}的主要劣势2`, `${mainKeyword}的主要劣势3`]
+                            };
+                        }
+                    }
+                }
+
+                return result;
+            }
+
+            // 从用户输入中提取关键词
+            extractKeywords(text) {
+                const keywords = [];
+                const commonWords = ['的', '是', '有', '在', '与', '和', '或', '但', '也', '都', '能', '会', '要', '让', '使', '为', '了', '从', '把', '被', '给', '对', '向', '上', '下', '中', '来', '去', '出', '入', '过', '起', '开', '关', '成', '到', '着', '了', '的', '得', '地'];
+                
+                // 分词并过滤
+                const words = text.split(/[，。！？、；：""''（）【】《》\s]+/).filter(word => 
+                    word.length > 1 && !commonWords.includes(word) && !/^\d+$/.test(word)
+                );
+                
+                // 返回前几个关键词
+                return words.slice(0, 8); // 增加到8个关键词以支持更多项
+            }
+
+            // 根据关键词生成合适的标题
+            generateTitleFromKeywords(keywords) {
+                const firstKeyword = keywords[0];
+                if (keywords.some(k => k.includes('优势') || k.includes('价值') || k.includes('特点'))) {
+                    return `${firstKeyword}核心优势`;
+                } else if (keywords.some(k => k.includes('功能') || k.includes('特色') || k.includes('能力'))) {
+                    return `${firstKeyword}主要功能`;
+                } else if (keywords.some(k => k.includes('流程') || k.includes('步骤') || k.includes('方法'))) {
+                    return `${firstKeyword}关键要点`;
+                } else if (keywords.some(k => k.includes('计划') || k.includes('方案') || k.includes('策略'))) {
+                    return `${firstKeyword}实施方案`;
+                } else if (keywords.some(k => k.includes('过程') || k.includes('阶段') || k.includes('环节'))) {
+                    return `${firstKeyword}执行步骤`;
+                } else if (keywords.some(k => k.includes('要求') || k.includes('标准') || k.includes('原则'))) {
+                    return `${firstKeyword}核心要求`;
+                } else if (keywords.some(k => k.includes('教育') || k.includes('学习') || k.includes('培训'))) {
+                    return `${firstKeyword}核心要素`;
+                } else {
+                    return `${firstKeyword}重点内容`;
+                }
+            }
+
+            // 智能决定最优项数
+            determineOptimalItemCount(userInput, keywords) {
+                const textLength = userInput.length;
+                const keywordCount = keywords.length;
+                const sentences = userInput.split(/[。！？.!?]/).filter(s => s.trim().length > 10);
+                const phrases = userInput.split(/[，,、]/).filter(s => s.trim().length > 5);
+                
+                // 基于多个因素智能决定项数
+                let baseCount = Math.min(keywordCount, 6); // 基础项数不超过6个
+                
+                // 如果关键词太少，考虑句子和短语数量
+                if (baseCount < 3) {
+                    baseCount = Math.max(baseCount, Math.min(sentences.length, 4));
+                    if (baseCount < 3) {
+                        baseCount = Math.max(baseCount, Math.min(phrases.length, 4));
+                    }
+                }
+                
+                // 根据文本长度调整
+                if (textLength > 300) {
+                    baseCount = Math.min(baseCount + 2, 6);
+                } else if (textLength > 200) {
+                    baseCount = Math.min(baseCount + 1, 6);
+                } else if (textLength < 50) {
+                    baseCount = Math.max(baseCount - 1, 2);
+                }
+                
+                // 根据句子数量调整
+                if (sentences.length >= 6) {
+                    baseCount = Math.min(baseCount + 1, 6);
+                } else if (sentences.length <= 1) {
+                    baseCount = Math.max(baseCount - 1, 2);
+                }
+                
+                // 确保项数在合理范围内（2-6项）
+                return Math.min(Math.max(baseCount, 2), 6);
+            }
+
+            // 根据关键词和输入内容生成价值点
+            generateValuesFromKeywords(keywords, userInput, itemCount) {
+                const values = [];
+                const sentences = userInput.split(/[。！？.!?]/).filter(s => s.trim().length > 10);
+                const phrases = userInput.split(/[，,、]/).filter(s => s.trim().length > 5);
+                
+                // 首先使用关键词
+                for (let i = 0; i < itemCount && i < keywords.length; i++) {
+                    const keyword = keywords[i];
+                    let description = '';
+                    
+                    // 尝试从原文中找到相关的句子作为描述
+                    const relatedSentence = sentences.find(s => s.includes(keyword));
+                    if (relatedSentence) {
+                        description = relatedSentence.trim();
+                    } else {
+                        // 查找包含该关键词的短语
+                        const relatedPhrase = phrases.find(p => p.includes(keyword));
+                        if (relatedPhrase) {
+                            description = relatedPhrase.trim();
+                        } else {
+                            // 生成通用描述
+                            description = this.generateDescriptionForKeyword(keyword, userInput);
+                        }
+                    }
+                    
+                    values.push({
+                        title: keyword,
+                        description: description
+                    });
+                }
+                
+                // 如果关键词不够，用句子补充
+                while (values.length < itemCount && values.length < sentences.length) {
+                    const sentenceIndex = values.length;
+                    const sentence = sentences[sentenceIndex];
+                    if (sentence && sentence.trim().length > 10) {
+                        // 尝试从句子中提取标题
+                        const words = sentence.split(/[\s，,、：:]/).filter(w => w.length > 1 && w.length < 10);
+                        const title = words.length > 0 ? words[0] : `要点${values.length + 1}`;
+                        
+                        values.push({
+                            title: title,
+                            description: sentence.trim()
+                        });
+                    } else {
+                        break;
+                    }
+                }
+                
+                // 如果还是不够，用短语补充
+                while (values.length < itemCount && values.length < phrases.length) {
+                    const phraseIndex = values.length;
+                    const phrase = phrases[phraseIndex];
+                    if (phrase && phrase.trim().length > 5) {
+                        values.push({
+                            title: `要点${values.length + 1}`,
+                            description: phrase.trim()
+                        });
+                    } else {
+                        break;
+                    }
+                }
+                
+                return values;
+            }
+
+            // 为关键词生成描述
+            generateDescriptionForKeyword(keyword, context) {
+                const contextLower = context.toLowerCase();
+                
+                if (contextLower.includes('ai') || contextLower.includes('人工智能')) {
+                    return `通过${keyword}技术提升工作效率，实现智能化处理和自动化操作`;
+                } else if (contextLower.includes('产品') || contextLower.includes('功能')) {
+                    return `${keyword}作为核心功能，为用户提供专业可靠的产品体验`;
+                } else if (contextLower.includes('教育') || contextLower.includes('学习')) {
+                    return `${keyword}在教育领域发挥重要作用，促进学习效果提升`;
+                } else if (contextLower.includes('管理') || contextLower.includes('企业')) {
+                    return `${keyword}帮助企业优化管理流程，提高运营效率`;
+                } else if (contextLower.includes('技术') || contextLower.includes('创新')) {
+                    return `${keyword}代表了技术创新的重要方向，推动行业发展`;
+                } else {
+                    return `${keyword}是关键要素，对整体目标的实现具有重要意义`;
+                }
+            }
+
+            // 从用户输入生成流程步骤，支持动态项数
+            generateStepsFromInput(text, keywords = []) {
+                const steps = [];
+                const sentences = text.split(/[。！？.!?]/).filter(s => s.trim().length > 10);
+                const phrases = text.split(/[，,、]/).filter(s => s.trim().length > 5);
+                
+                // 智能决定步骤数量（2-6个）
+                const optimalCount = this.determineOptimalItemCount(text, keywords);
+                
+                // 优先使用关键词生成步骤
+                for (let i = 0; i < optimalCount && i < keywords.length; i++) {
+                    const keyword = keywords[i];
+                    let description = '';
+                    
+                    // 尝试从原文中找到相关的句子作为描述
+                    const relatedSentence = sentences.find(s => s.includes(keyword));
+                    if (relatedSentence) {
+                        description = relatedSentence.trim();
+                    } else {
+                        // 查找包含该关键词的短语
+                        const relatedPhrase = phrases.find(p => p.includes(keyword));
+                        if (relatedPhrase) {
+                            description = relatedPhrase.trim();
+                        } else {
+                            // 生成通用描述
+                            description = this.generateDescriptionForKeyword(keyword, text);
+                        }
+                    }
+                    
+                    steps.push({
+                        title: keyword,
+                        description: description
+                    });
+                }
+                
+                // 如果关键词不够，用句子补充
+                while (steps.length < optimalCount && steps.length < sentences.length) {
+                    const sentenceIndex = steps.length;
+                    const sentence = sentences[sentenceIndex];
+                    if (sentence && sentence.trim().length > 10) {
+                        // 尝试从句子中提取标题
+                        const words = sentence.split(/[\s，,、：:]/).filter(w => w.length > 1 && w.length < 15);
+                        const title = words.length > 0 ? words[0] : `步骤${steps.length + 1}`;
+                        
+                        steps.push({
+                            title: title,
+                            description: sentence.trim()
+                        });
+                    } else {
+                        break;
+                    }
+                }
+                
+                // 如果还是不够，用短语补充
+                while (steps.length < optimalCount && steps.length < phrases.length) {
+                    const phraseIndex = steps.length;
+                    const phrase = phrases[phraseIndex];
+                    if (phrase && phrase.trim().length > 5) {
+                        steps.push({
+                            title: `要点${steps.length + 1}`,
+                            description: phrase.trim()
+                        });
+                    } else {
+                        break;
+                    }
+                }
+                
+                return steps;
+            }
+
+            renderPreview() {
+                if (!this.generatedContent || !this.selectedComponent) return;
+
+                const previewArea = document.getElementById('previewArea');
+                
+                // 先创建iframe，然后监听load事件来发送消息
+                const iframe = document.createElement('iframe');
+                iframe.id = 'component-iframe';
+                iframe.src = `${this.selectedComponent}.html`;
+                iframe.style.width = '100%';
+                iframe.style.height = '100%';
+                iframe.style.border = 'none';
+                iframe.style.borderRadius = '8px';
+                
+                // 监听iframe加载完成事件
+                iframe.onload = () => {
+                    console.log('发送数据到组件:', this.selectedComponent, this.generatedContent);
+                    console.log('详细的生成内容:', JSON.stringify(this.generatedContent, null, 2));
+                    // 等待iframe完全加载后再发送消息
+                    setTimeout(() => {
+                        iframe.contentWindow.postMessage({
+                            type: 'updateContent',
+                            component: this.selectedComponent,
+                            content: this.generatedContent
+                        }, '*');
+                    }, 100);
+                };
+                
+                // 清空预览区域并添加新的iframe
+                previewArea.innerHTML = '';
+                previewArea.appendChild(iframe);
+            }
+
+            renderCoreValuePreview() {
+                const { title, values } = this.generatedContent;
+                return `
+                    <div class="generated-preview" id="preview-content">
+                        <div class="preview-header">
+                            <h1 class="preview-title">${title}</h1>
+                        </div>
+                        <div class="values-grid">
+                            ${values.map((value, index) => `
+                                <div class="value-item">
+                                    <div class="value-icon">
+                                        <i class="fas fa-star"></i>
+                                    </div>
+                                    <h3 class="value-title">${value.title}</h3>
+                                    <p class="value-description">${value.description}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderAiTransformPreview() {
+                const { title, steps } = this.generatedContent;
+                return `
+                    <div class="generated-preview" id="preview-content">
+                        <div class="preview-header">
+                            <h1 class="preview-title">${title}</h1>
+                        </div>
+                        <div class="steps-container">
+                            ${steps.map((step, index) => `
+                                <div class="step-item">
+                                    <div class="step-indicator">
+                                        <span class="step-number">${index + 1}</span>
+                                    </div>
+                                    <div class="step-content">
+                                        <h3 class="step-title">${step.title}</h3>
+                                        <p class="step-description">${step.description}</p>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderTablePreview() {
+                const { title, headers, rows } = this.generatedContent;
+                return `
+                    <div class="generated-preview" id="preview-content">
+                        <div class="preview-header">
+                            <h1 class="preview-title">${title}</h1>
+                        </div>
+                        <div class="table-container">
+                            <table class="preview-table">
+                                <thead>
+                                    <tr>
+                                        ${headers.map(header => `<th>${header}</th>`).join('')}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${rows.map(row => `
+                                        <tr>
+                                            ${row.map(cell => `<td>${cell}</td>`).join('')}
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderChartPreview() {
+                const { title } = this.generatedContent;
+                return `
+                    <div class="generated-preview" id="preview-content">
+                        <div class="preview-header">
+                            <h1 class="preview-title">${title}</h1>
+                        </div>
+                        <div class="chart-container">
+                            <div id="chart-area" style="width: 100%; height: 300px;"></div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderLeftRightPreview() {
+                const { title, left, right } = this.generatedContent;
+                return `
+                    <div class="generated-preview" id="preview-content">
+                        <div class="preview-header">
+                            <h1 class="preview-title">${title}</h1>
+                        </div>
+                        <div class="comparison-container">
+                            <div class="comparison-side left-side">
+                                <h3 class="side-title">${left.title}</h3>
+                                <ul class="side-list">
+                                    ${left.items.map(item => `
+                                        <li class="side-item">
+                                            <i class="fas fa-check"></i>
+                                            <span>${item}</span>
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                            </div>
+                            <div class="comparison-divider"></div>
+                            <div class="comparison-side right-side">
+                                <h3 class="side-title">${right.title}</h3>
+                                <ul class="side-list">
+                                    ${right.items.map(item => `
+                                        <li class="side-item">
+                                            <i class="fas fa-times"></i>
+                                            <span>${item}</span>
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderD3Chart() {
+                if (!this.generatedContent.data) return;
+
+                const chartData = this.generatedContent.data;
+                const container = document.getElementById('chart-area');
+                
+                // 清除之前的图表
+                d3.select('#chart-area').selectAll('*').remove();
+
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+                const margin = {top: 20, right: 20, bottom: 40, left: 40};
+                const innerWidth = width - margin.left - margin.right;
+                const innerHeight = height - margin.top - margin.bottom;
+
+                const svg = d3.select('#chart-area')
+                    .append('svg')
+                    .attr('width', width)
+                    .attr('height', height);
+
+                const g = svg.append('g')
+                    .attr('transform', `translate(${margin.left},${margin.top})`);
+
+                const x = d3.scaleBand()
+                    .domain(chartData.map(d => d.category))
+                    .range([0, innerWidth])
+                    .padding(0.3);
+
+                const y = d3.scaleLinear()
+                    .domain([0, d3.max(chartData, d => d.value)])
+                    .range([innerHeight, 0]);
+
+                // 添加坐标轴
+                g.append('g')
+                    .attr('transform', `translate(0,${innerHeight})`)
+                    .call(d3.axisBottom(x))
+                    .selectAll('text')
+                    .attr('fill', '#e2e8f0')
+                    .style('font-size', '12px');
+
+                g.append('g')
+                    .call(d3.axisLeft(y).ticks(5))
+                    .selectAll('text')
+                    .attr('fill', '#e2e8f0')
+                    .style('font-size', '12px');
+
+                // 添加柱状图
+                g.selectAll('.bar')
+                    .data(chartData)
+                    .enter().append('rect')
+                    .attr('class', 'bar')
+                    .attr('x', d => x(d.category))
+                    .attr('y', d => y(d.value))
+                    .attr('width', x.bandwidth())
+                    .attr('height', d => innerHeight - y(d.value))
+                    .attr('fill', '#3b82f6')
+                    .attr('rx', 4)
+                    .attr('ry', 4);
+
+                // 添加数值标签
+                g.selectAll('.label')
+                    .data(chartData)
+                    .enter().append('text')
+                    .attr('class', 'label')
+                    .attr('x', d => x(d.category) + x.bandwidth() / 2)
+                    .attr('y', d => y(d.value) - 5)
+                    .attr('text-anchor', 'middle')
+                    .attr('fill', '#e2e8f0')
+                    .style('font-size', '12px')
+                    .text(d => d.value);
+            }
+            
+            showDebuggerPromptNotice() {
+                // 在页面顶部显示一个通知
+                const notice = document.createElement('div');
+                notice.innerHTML = `
+                    <div style="background: rgba(16, 185, 129, 0.2); color: #10b981; padding: 10px 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid rgba(16, 185, 129, 0.3);">
+                        <i class="fas fa-check-circle" style="margin-right: 8px;"></i>
+                        正在使用调试器中优化的Prompt
+                    </div>
+                `;
+                
+                // 插入到sidebar的顶部
+                const sidebar = document.querySelector('.sidebar');
+                sidebar.insertBefore(notice, sidebar.firstChild);
+                
+                // 5秒后移除通知
+                setTimeout(() => {
+                    notice.remove();
+                }, 5000);
+            }
+        }
+
+        // 初始化应用
+        const app = new AIPPTGenerator();
+        
+        // 页面加载时清除可能的旧缓存，确保使用最新的代码模板
+        window.addEventListener('load', function() {
+            // 清除可能影响Prompt使用的旧缓存
+            const debuggedPromptData = localStorage.getItem('debuggedPrompt');
+            if (debuggedPromptData) {
+                try {
+                    const promptConfig = JSON.parse(debuggedPromptData);
+                    // 如果超过5分钟，自动清除
+                    const fiveMinutes = 5 * 60 * 1000;
+                    if (Date.now() - promptConfig.timestamp > fiveMinutes) {
+                        localStorage.removeItem('debuggedPrompt');
+                        console.log('已清除过期的调试器Prompt缓存，现在将使用代码中的最新模板');
+                    }
+                } catch (e) {
+                    localStorage.removeItem('debuggedPrompt');
+                    console.log('已清除无效的调试器Prompt缓存');
+                }
+            }
+            console.log('AI PPT组件生成器已加载，将优先使用代码中的Prompt模板');
+        });
+    </script>
+</body>
+</html>

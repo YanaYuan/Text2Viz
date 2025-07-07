@@ -1,0 +1,13 @@
+{
+  "name": "ai-ppt-generator",
+  "version": "1.0.0",
+  "description": "AI PPT组件生成器 - 智能生成专业PPT组件",
+  "main": "ai-ppt-generator.html",
+  "scripts": {
+    "start": "echo 'Static website, no build required'",
+    "build": "echo 'Static website, no build required'"
+  },
+  "keywords": ["ai", "ppt", "generator", "presentation"],
+  "author": "Your Name",
+  "license": "MIT"
+}
