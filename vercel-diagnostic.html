@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vercel API 完整诊断工具</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            background: #f9f9f9;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #555;
+            font-size: 18px;
+        }
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            min-width: 150px;
+        }
+        .btn:hover { 
+            background: #0056b3; 
+            transform: translateY(-2px);
+        }
+        .btn:disabled { 
+            background: #6c757d; 
+            cursor: not-allowed; 
+            transform: none;
+        }
+        .btn.success { background: #28a745; }
+        .btn.error { background: #dc3545; }
+        .btn.warning { background: #ffc107; color: #333; }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            max-height: 300px;
+            overflow-y: auto;
+            border-left: 4px solid #ccc;
+            display: none;
+        }
+        .result.show { display: block; }
+        .result.success { 
+            background: #d4edda; 
+            color: #155724; 
+            border-left-color: #28a745;
+        }
+        .result.error { 
+            background: #f8d7da; 
+            color: #721c24; 
+            border-left-color: #dc3545;
+        }
+        .result.loading { 
+            background: #fff3cd; 
+            color: #856404; 
+            border-left-color: #ffc107;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-indicator.online { background: #28a745; }
+        .status-indicator.offline { background: #dc3545; }
+        .status-indicator.unknown { background: #6c757d; }
+        .summary {
+            background: #e7f3ff;
+            border: 1px solid #b3d7ff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        .summary h3 {
+            margin-top: 0;
+            color: #0066cc;
+        }
+        .url-display {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Vercel API 完整诊断工具</h1>
+        
+        <div class="test-section">
+            <h3>📍 基础连接测试</h3>
+            <p>测试最简单的API端点是否可访问</p>
+            <div class="btn-group">
+                <button class="btn" onclick="testAPI('/api/hello')">测试 /api/hello</button>
+                <button class="btn" onclick="testAPI('/api/check-env')">测试 /api/check-env</button>
+                <button class="btn" onclick="testAPI('/api/test-env')">测试 /api/test-env</button>
+            </div>
+            <div id="basic-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🌐 网络环境检测</h3>
+            <p>检测当前网络环境和域名解析</p>
+            <div class="btn-group">
+                <button class="btn" onclick="testDomain()">检测域名访问</button>
+                <button class="btn" onclick="testCORS()">测试 CORS 配置</button>
+                <button class="btn" onclick="testHTTPMethods()">测试 HTTP 方法</button>
+            </div>
+            <div id="network-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>⚙️ API 功能测试</h3>
+            <p>测试OpenAI API代理功能</p>
+            <div class="btn-group">
+                <button class="btn" onclick="testOpenAIAPI()">测试 OpenAI 代理</button>
+                <button class="btn" onclick="testAPIWithData()">测试带数据的请求</button>
+            </div>
+            <div id="api-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔍 环境变量检查</h3>
+            <p>验证Vercel环境变量配置</p>
+            <div class="btn-group">
+                <button class="btn" onclick="checkEnvironmentVariables()">检查环境变量</button>
+                <button class="btn" onclick="testAPIConfig()">测试API配置</button>
+            </div>
+            <div id="env-result" class="result"></div>
+        </div>
+
+        <div class="summary">
+            <h3>📊 诊断总结</h3>
+            <div id="summary-content">
+                <p>点击上面的测试按钮开始诊断...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局测试结果存储
+        const testResults = {
+            basic: {},
+            network: {},
+            api: {},
+            environment: {}
+        };
+
+        // 显示结果的通用函数
+        function showResult(elementId, content, type = 'loading') {
+            const element = document.getElementById(elementId);
+            element.className = `result show ${type}`;
+            element.textContent = content;
+        }
+
+        // 更新摘要
+        function updateSummary() {
+            const summary = document.getElementById('summary-content');
+            let html = '<h4>测试结果概览:</h4>';
+            
+            Object.keys(testResults).forEach(category => {
+                const results = testResults[category];
+                const total = Object.keys(results).length;
+                const passed = Object.values(results).filter(r => r.success).length;
+                
+                if (total > 0) {
+                    const status = passed === total ? 'online' : (passed > 0 ? 'unknown' : 'offline');
+                    html += `<div><span class="status-indicator ${status}"></span>${category}: ${passed}/${total} 测试通过</div>`;
+                }
+            });
+            
+            summary.innerHTML = html;
+        }
+
+        // 基础API测试
+        async function testAPI(endpoint) {
+            const resultId = 'basic-result';
+            showResult(resultId, `正在测试 ${endpoint}...`, 'loading');
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const contentType = response.headers.get('content-type');
+                let data;
+                
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    data = await response.text();
+                }
+
+                const result = {
+                    success: response.ok,
+                    status: response.status,
+                    statusText: response.statusText,
+                    data: data,
+                    contentType: contentType
+                };
+
+                testResults.basic[endpoint] = result;
+
+                const resultText = `
+✅ 测试端点: ${endpoint}
+📊 状态码: ${response.status} ${response.statusText}
+📄 内容类型: ${contentType || 'unknown'}
+📋 响应数据:
+${JSON.stringify(data, null, 2)}
+                `.trim();
+
+                showResult(resultId, resultText, response.ok ? 'success' : 'error');
+                updateSummary();
+
+            } catch (error) {
+                const errorText = `
+❌ 测试端点: ${endpoint}
+🚫 错误类型: ${error.name}
+📝 错误信息: ${error.message}
+🔍 可能原因:
+- API端点不存在或路径错误
+- Vercel部署配置问题
+- 网络连接问题
+- CORS策略阻止
+                `.trim();
+
+                testResults.basic[endpoint] = { success: false, error: error.message };
+                showResult(resultId, errorText, 'error');
+                updateSummary();
+            }
+        }
+
+        // 域名测试
+        async function testDomain() {
+            const resultId = 'network-result';
+            showResult(resultId, '正在检测域名和网络环境...', 'loading');
+
+            const currentDomain = window.location.hostname;
+            const currentProtocol = window.location.protocol;
+            const currentPort = window.location.port;
+
+            const info = {
+                domain: currentDomain,
+                protocol: currentProtocol,
+                port: currentPort || (currentProtocol === 'https:' ? '443' : '80'),
+                userAgent: navigator.userAgent,
+                isLocalhost: currentDomain === 'localhost' || currentDomain === '127.0.0.1',
+                isVercel: currentDomain.includes('vercel.app'),
+                timestamp: new Date().toISOString()
+            };
+
+            const resultText = `
+🌐 域名信息:
+- 当前域名: ${info.domain}
+- 协议: ${info.protocol}
+- 端口: ${info.port}
+- 是否本地环境: ${info.isLocalhost ? '是' : '否'}
+- 是否Vercel域名: ${info.isVercel ? '是' : '否'}
+
+🔗 API基础URL: ${currentProtocol}//${currentDomain}${currentPort ? ':' + currentPort : ''}/api/
+
+💡 诊断建议:
+${info.isLocalhost ? '⚠️ 本地环境: API可能无法正常工作' : ''}
+${info.isVercel ? '✅ Vercel环境: API应该可以正常工作' : ''}
+            `.trim();
+
+            testResults.network.domain = { success: true, info };
+            showResult(resultId, resultText, 'success');
+            updateSummary();
+        }
+
+        // CORS测试
+        async function testCORS() {
+            const resultId = 'network-result';
+            showResult(resultId, '正在测试CORS配置...', 'loading');
+
+            try {
+                const response = await fetch('/api/hello', {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': window.location.origin,
+                        'Access-Control-Request-Method': 'GET',
+                        'Access-Control-Request-Headers': 'Content-Type'
+                    }
+                });
+
+                const corsHeaders = {
+                    'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin'),
+                    'Access-Control-Allow-Methods': response.headers.get('Access-Control-Allow-Methods'),
+                    'Access-Control-Allow-Headers': response.headers.get('Access-Control-Allow-Headers')
+                };
+
+                const resultText = `
+🔐 CORS 预检请求结果:
+- 状态码: ${response.status}
+- Allow-Origin: ${corsHeaders['Access-Control-Allow-Origin'] || '未设置'}
+- Allow-Methods: ${corsHeaders['Access-Control-Allow-Methods'] || '未设置'}
+- Allow-Headers: ${corsHeaders['Access-Control-Allow-Headers'] || '未设置'}
+
+${response.ok ? '✅ CORS配置正常' : '❌ CORS配置可能有问题'}
+                `.trim();
+
+                testResults.network.cors = { success: response.ok, headers: corsHeaders };
+                showResult(resultId, resultText, response.ok ? 'success' : 'error');
+                updateSummary();
+
+            } catch (error) {
+                const errorText = `❌ CORS测试失败: ${error.message}`;
+                testResults.network.cors = { success: false, error: error.message };
+                showResult(resultId, errorText, 'error');
+                updateSummary();
+            }
+        }
+
+        // HTTP方法测试
+        async function testHTTPMethods() {
+            const resultId = 'network-result';
+            showResult(resultId, '正在测试HTTP方法支持...', 'loading');
+
+            const methods = ['GET', 'POST', 'OPTIONS'];
+            const results = {};
+
+            for (const method of methods) {
+                try {
+                    const response = await fetch('/api/hello', {
+                        method: method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: method === 'POST' ? JSON.stringify({ test: true }) : undefined
+                    });
+
+                    results[method] = {
+                        success: response.ok,
+                        status: response.status,
+                        statusText: response.statusText
+                    };
+                } catch (error) {
+                    results[method] = {
+                        success: false,
+                        error: error.message
+                    };
+                }
+            }
+
+            const resultText = `
+🔧 HTTP 方法支持测试:
+${methods.map(method => {
+    const result = results[method];
+    const status = result.success ? '✅' : '❌';
+    return `- ${method}: ${status} ${result.status || result.error}`;
+}).join('\n')}
+            `.trim();
+
+            testResults.network.httpMethods = results;
+            showResult(resultId, resultText, 'success');
+            updateSummary();
+        }
+
+        // OpenAI API测试
+        async function testOpenAIAPI() {
+            const resultId = 'api-result';
+            showResult(resultId, '正在测试OpenAI API代理...', 'loading');
+
+            try {
+                const testData = {
+                    messages: [
+                        { role: "user", content: "Hello, this is a test message." }
+                    ],
+                    max_tokens: 50
+                };
+
+                const response = await fetch('/api/openai', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                const data = await response.json();
+
+                const resultText = `
+🤖 OpenAI API 代理测试:
+- 状态码: ${response.status} ${response.statusText}
+- 响应时间: ${Date.now() - performance.now()}ms
+
+📋 响应数据:
+${JSON.stringify(data, null, 2)}
+
+${response.ok ? '✅ API代理工作正常' : '❌ API代理可能有问题'}
+                `.trim();
+
+                testResults.api.openai = { success: response.ok, data };
+                showResult(resultId, resultText, response.ok ? 'success' : 'error');
+                updateSummary();
+
+            } catch (error) {
+                const errorText = `❌ OpenAI API测试失败: ${error.message}`;
+                testResults.api.openai = { success: false, error: error.message };
+                showResult(resultId, errorText, 'error');
+                updateSummary();
+            }
+        }
+
+        // 带数据的API测试
+        async function testAPIWithData() {
+            const resultId = 'api-result';
+            showResult(resultId, '正在测试API数据传输...', 'loading');
+
+            const testPayload = {
+                test: true,
+                message: "API数据传输测试",
+                timestamp: new Date().toISOString(),
+                data: {
+                    array: [1, 2, 3],
+                    object: { key: "value" }
+                }
+            };
+
+            try {
+                const response = await fetch('/api/test-env', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testPayload)
+                });
+
+                const data = await response.json();
+
+                const resultText = `
+📦 API 数据传输测试:
+- 发送数据大小: ${JSON.stringify(testPayload).length} 字节
+- 状态码: ${response.status}
+- 响应数据:
+${JSON.stringify(data, null, 2)}
+                `.trim();
+
+                testResults.api.dataTransfer = { success: response.ok, data };
+                showResult(resultId, resultText, response.ok ? 'success' : 'error');
+                updateSummary();
+
+            } catch (error) {
+                const errorText = `❌ 数据传输测试失败: ${error.message}`;
+                testResults.api.dataTransfer = { success: false, error: error.message };
+                showResult(resultId, errorText, 'error');
+                updateSummary();
+            }
+        }
+
+        // 环境变量检查
+        async function checkEnvironmentVariables() {
+            const resultId = 'env-result';
+            showResult(resultId, '正在检查环境变量...', 'loading');
+
+            try {
+                const response = await fetch('/api/test-env');
+                const data = await response.json();
+
+                const resultText = `
+⚙️ 环境变量检查结果:
+${JSON.stringify(data, null, 2)}
+
+${data.allConfigured ? '✅ 环境变量配置完整' : '⚠️ 环境变量配置不完整'}
+                `.trim();
+
+                testResults.environment.variables = { success: response.ok, data };
+                showResult(resultId, resultText, response.ok ? 'success' : 'error');
+                updateSummary();
+
+            } catch (error) {
+                const errorText = `❌ 环境变量检查失败: ${error.message}`;
+                testResults.environment.variables = { success: false, error: error.message };
+                showResult(resultId, errorText, 'error');
+                updateSummary();
+            }
+        }
+
+        // API配置测试
+        async function testAPIConfig() {
+            const resultId = 'env-result';
+            showResult(resultId, '正在测试API配置...', 'loading');
+
+            try {
+                const response = await fetch('/api/check-env');
+                const data = await response.json();
+
+                const resultText = `
+🔧 API 配置测试:
+${JSON.stringify(data, null, 2)}
+                `.trim();
+
+                testResults.environment.config = { success: response.ok, data };
+                showResult(resultId, resultText, response.ok ? 'success' : 'error');
+                updateSummary();
+
+            } catch (error) {
+                const errorText = `❌ API配置测试失败: ${error.message}`;
+                testResults.environment.config = { success: false, error: error.message };
+                showResult(resultId, errorText, 'error');
+                updateSummary();
+            }
+        }
+
+        // 页面加载时自动运行基础测试
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                testDomain();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
