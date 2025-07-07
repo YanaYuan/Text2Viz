@@ -1772,127 +1772,190 @@
                 // 立即清空预览区域，防止重复内容
                 previewArea.innerHTML = '';
                 
-                // 添加一个临时的加载提示
-                const loadingDiv = document.createElement('div');
-                loadingDiv.className = 'empty-preview';
-                loadingDiv.innerHTML = `
-                    <i class="fas fa-spinner fa-spin"></i>
-                    <h3>正在加载组件...</h3>
-                    <p>请稍候，正在渲染PPT组件</p>
-                `;
-                previewArea.appendChild(loadingDiv);
+                console.log('开始渲染组件:', this.selectedComponent, this.generatedContent);
                 
-                // 创建iframe，添加时间戳避免缓存问题
-                const iframe = document.createElement('iframe');
-                iframe.id = 'component-iframe';
-                iframe.src = `${this.selectedComponent}.html?t=${Date.now()}`;
-                iframe.style.width = '100%';
-                iframe.style.height = '100%';
-                iframe.style.border = 'none';
-                iframe.style.borderRadius = '8px';
-                iframe.style.display = 'none'; // 先隐藏，加载完成后显示
-                
-                // 设置一个超时时间，如果加载时间过长则显示错误
-                const timeout = setTimeout(() => {
-                    console.error('iframe加载超时');
-                    previewArea.innerHTML = `
-                        <div class="empty-preview">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <h3>加载超时</h3>
-                            <p>组件加载时间过长，请重试</p>
-                        </div>
-                    `;
-                }, 10000); // 10秒超时
-                
-                // 监听iframe加载完成事件
-                iframe.onload = () => {
-                    clearTimeout(timeout); // 清除超时定时器
-                    
-                    console.log('发送数据到组件:', this.selectedComponent, this.generatedContent);
-                    console.log('详细的生成内容:', JSON.stringify(this.generatedContent, null, 2));
-                    
-                    // 等待iframe完全加载后再发送消息
-                    setTimeout(() => {
-                        try {
-                            iframe.contentWindow.postMessage({
-                                type: 'updateContent',
-                                component: this.selectedComponent,
-                                content: this.generatedContent
-                            }, '*');
-                            
-                            // 显示iframe，隐藏加载提示
-                            iframe.style.display = 'block';
-                            if (loadingDiv && loadingDiv.parentNode) {
-                                loadingDiv.remove();
-                            }
-                        } catch (error) {
-                            console.error('发送消息到iframe失败:', error);
-                            previewArea.innerHTML = `
-                                <div class="empty-preview">
-                                    <i class="fas fa-exclamation-triangle"></i>
-                                    <h3>渲染失败</h3>
-                                    <p>组件渲染出现错误，请重试</p>
-                                </div>
-                            `;
-                        }
-                    }, 200); // 增加等待时间确保iframe完全准备好
-                };
-                
-                // 监听iframe加载错误
-                iframe.onerror = () => {
-                    clearTimeout(timeout);
-                    console.error('iframe加载失败');
-                    previewArea.innerHTML = `
-                        <div class="empty-preview">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <h3>加载失败</h3>
-                            <p>组件文件加载失败，请检查文件是否存在</p>
-                        </div>
-                    `;
-                };
-                
-                // 添加iframe到预览区域
-                previewArea.appendChild(iframe);
+                // 根据组件类型直接渲染内容，不使用iframe
+                switch (this.selectedComponent) {
+                    case 'core-value':
+                        this.renderCoreValueDirect(previewArea);
+                        break;
+                    case 'ai-transform':
+                        this.renderAiTransformDirect(previewArea);
+                        break;
+                    case 'table-component':
+                        this.renderTableDirect(previewArea);
+                        break;
+                    case 'chart-component':
+                        this.renderChartDirect(previewArea);
+                        break;
+                    case 'left-right-component':
+                        this.renderLeftRightDirect(previewArea);
+                        break;
+                    default:
+                        previewArea.innerHTML = `
+                            <div class="empty-preview">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <h3>未知组件类型</h3>
+                                <p>请选择正确的组件类型</p>
+                            </div>
+                        `;
+                }
             }
 
-            renderCoreValuePreview() {
+            renderCoreValueDirect(container) {
                 const { title, values } = this.generatedContent;
-                return `
-                    <div class="generated-preview" id="preview-content">
-                        <div class="preview-header">
-                            <h1 class="preview-title">${title}</h1>
-                        </div>
-                        <div class="values-grid">
-                            ${values.map((value, index) => `
-                                <div class="value-item">
-                                    <div class="value-icon">
-                                        <i class="fas fa-star"></i>
-                                    </div>
-                                    <h3 class="value-title">${value.title}</h3>
-                                    <p class="value-description">${value.description}</p>
-                                </div>
-                            `).join('')}
+                
+                container.innerHTML = `
+                    <div style="
+                        background: linear-gradient(135deg, #1f2937 0%, #1e3a8a 100%);
+                        color: white;
+                        height: 100%;
+                        padding: 3rem;
+                        position: relative;
+                        overflow: hidden;
+                        border-radius: 12px;
+                    ">
+                        <!-- Background Pattern -->
+                        <div style="
+                            position: absolute;
+                            top: 0;
+                            right: 0;
+                            width: 18rem;
+                            height: 18rem;
+                            border-radius: 50%;
+                            border: 1px solid rgba(59, 130, 246, 0.3);
+                            opacity: 0.1;
+                        "></div>
+                        <div style="
+                            position: absolute;
+                            bottom: 10rem;
+                            left: 5rem;
+                            width: 10rem;
+                            height: 10rem;
+                            border-radius: 50%;
+                            border: 1px solid rgba(59, 130, 246, 0.3);
+                            opacity: 0.1;
+                        "></div>
+                        
+                        <!-- Main Content -->
+                        <div style="position: relative; z-index: 10;">
+                            <h2 style="
+                                font-size: 2rem;
+                                font-weight: 600;
+                                color: #93c5fd;
+                                margin-bottom: 2rem;
+                                display: flex;
+                                align-items: center;
+                            ">
+                                <i class="fas fa-gem" style="margin-right: 0.5rem;"></i>${title}
+                            </h2>
+                            
+                            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                                ${values.map((value, index) => {
+                                    const icons = ['fas fa-bolt', 'fas fa-paint-brush', 'fas fa-brain', 'fas fa-gem', 'fas fa-star', 'fas fa-rocket'];
+                                    const iconClass = icons[index % icons.length];
+                                    
+                                    return `
+                                        <div style="
+                                            display: flex;
+                                            align-items: flex-start;
+                                            gap: 1rem;
+                                            padding: 1rem 0;
+                                        ">
+                                            <div style="
+                                                width: 3rem;
+                                                height: 3rem;
+                                                background: rgba(30, 58, 138, 0.8);
+                                                border: 1px solid rgba(59, 130, 246, 0.6);
+                                                border-radius: 50%;
+                                                display: flex;
+                                                align-items: center;
+                                                justify-content: center;
+                                                color: #06b6d4;
+                                                flex-shrink: 0;
+                                            ">
+                                                <i class="${iconClass}" style="font-size: 1.25rem;"></i>
+                                            </div>
+                                            <div style="flex: 1;">
+                                                <h3 style="
+                                                    font-size: 1.25rem;
+                                                    font-weight: 500;
+                                                    color: #a5f3fc;
+                                                    margin-bottom: 0.5rem;
+                                                ">${value.title}</h3>
+                                                <p style="
+                                                    color: #e2e8f0;
+                                                    line-height: 1.6;
+                                                    font-size: 0.95rem;
+                                                ">${value.description}</p>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
                         </div>
                     </div>
                 `;
             }
 
-            renderAiTransformPreview() {
+            renderAiTransformDirect(container) {
                 const { title, steps } = this.generatedContent;
-                return `
-                    <div class="generated-preview" id="preview-content">
-                        <div class="preview-header">
-                            <h1 class="preview-title">${title}</h1>
-                        </div>
-                        <div class="steps-container">
+                
+                container.innerHTML = `
+                    <div style="
+                        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+                        color: white;
+                        height: 100%;
+                        padding: 3rem;
+                        border-radius: 12px;
+                        position: relative;
+                    ">
+                        <h2 style="
+                            font-size: 2rem;
+                            font-weight: 600;
+                            color: #60a5fa;
+                            margin-bottom: 2rem;
+                            display: flex;
+                            align-items: center;
+                        ">
+                            <i class="fas fa-clipboard-list" style="margin-right: 0.5rem;"></i>${title}
+                        </h2>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
                             ${steps.map((step, index) => `
-                                <div class="step-item">
-                                    <div class="step-indicator">
-                                        <span class="step-number">${index + 1}</span>
-                                    </div>
-                                    <div class="step-content">
-                                        <h3 class="step-title">${step.title}</h3>
-                                        <p class="step-description">${step.description}</p>
+                                <div style="
+                                    display: flex;
+                                    align-items: flex-start;
+                                    gap: 1rem;
+                                    padding: 1.5rem;
+                                    background: rgba(30, 41, 59, 0.5);
+                                    border-radius: 8px;
+                                    border-left: 4px solid #3b82f6;
+                                ">
+                                    <div style="
+                                        width: 2rem;
+                                        height: 2rem;
+                                        background: #3b82f6;
+                                        border-radius: 50%;
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
+                                        color: white;
+                                        font-weight: bold;
+                                        flex-shrink: 0;
+                                        font-size: 0.9rem;
+                                    ">${index + 1}</div>
+                                    <div style="flex: 1;">
+                                        <h3 style="
+                                            font-size: 1.1rem;
+                                            font-weight: 600;
+                                            color: #e2e8f0;
+                                            margin-bottom: 0.5rem;
+                                        ">${step.title}</h3>
+                                        <p style="
+                                            color: #cbd5e1;
+                                            line-height: 1.6;
+                                        ">${step.description}</p>
                                     </div>
                                 </div>
                             `).join('')}
@@ -1901,24 +1964,54 @@
                 `;
             }
 
-            renderTablePreview() {
+            renderTableDirect(container) {
                 const { title, headers, rows } = this.generatedContent;
-                return `
-                    <div class="generated-preview" id="preview-content">
-                        <div class="preview-header">
-                            <h1 class="preview-title">${title}</h1>
-                        </div>
-                        <div class="table-container">
-                            <table class="preview-table">
+                
+                container.innerHTML = `
+                    <div style="
+                        background: white;
+                        height: 100%;
+                        padding: 2rem;
+                        border-radius: 12px;
+                        overflow: auto;
+                    ">
+                        <h2 style="
+                            font-size: 1.5rem;
+                            font-weight: 600;
+                            color: #1f2937;
+                            margin-bottom: 1.5rem;
+                            text-align: center;
+                        ">${title}</h2>
+                        
+                        <div style="overflow-x: auto;">
+                            <table style="
+                                width: 100%;
+                                border-collapse: collapse;
+                                font-size: 0.9rem;
+                            ">
                                 <thead>
-                                    <tr>
-                                        ${headers.map(header => `<th>${header}</th>`).join('')}
+                                    <tr style="background: #f3f4f6;">
+                                        ${headers.map(header => `
+                                            <th style="
+                                                padding: 0.75rem;
+                                                text-align: left;
+                                                font-weight: 600;
+                                                color: #374151;
+                                                border-bottom: 2px solid #d1d5db;
+                                            ">${header}</th>
+                                        `).join('')}
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${rows.map(row => `
-                                        <tr>
-                                            ${row.map(cell => `<td>${cell}</td>`).join('')}
+                                    ${rows.map((row, index) => `
+                                        <tr style="background: ${index % 2 === 0 ? '#ffffff' : '#f9fafb'};">
+                                            ${row.map(cell => `
+                                                <td style="
+                                                    padding: 0.75rem;
+                                                    color: #374151;
+                                                    border-bottom: 1px solid #e5e7eb;
+                                                ">${cell}</td>
+                                            `).join('')}
                                         </tr>
                                     `).join('')}
                                 </tbody>
@@ -1928,127 +2021,192 @@
                 `;
             }
 
-            renderChartPreview() {
-                const { title } = this.generatedContent;
-                return `
-                    <div class="generated-preview" id="preview-content">
-                        <div class="preview-header">
-                            <h1 class="preview-title">${title}</h1>
-                        </div>
-                        <div class="chart-container">
-                            <div id="chart-area" style="width: 100%; height: 300px;"></div>
-                        </div>
-                    </div>
-                `;
-            }
-
-            renderLeftRightPreview() {
-                const { title, left, right } = this.generatedContent;
-                return `
-                    <div class="generated-preview" id="preview-content">
-                        <div class="preview-header">
-                            <h1 class="preview-title">${title}</h1>
-                        </div>
-                        <div class="comparison-container">
-                            <div class="comparison-side left-side">
-                                <h3 class="side-title">${left.title}</h3>
-                                <ul class="side-list">
-                                    ${left.items.map(item => `
-                                        <li class="side-item">
-                                            <i class="fas fa-check"></i>
-                                            <span>${item}</span>
-                                        </li>
-                                    `).join('')}
-                                </ul>
-                            </div>
-                            <div class="comparison-divider"></div>
-                            <div class="comparison-side right-side">
-                                <h3 class="side-title">${right.title}</h3>
-                                <ul class="side-list">
-                                    ${right.items.map(item => `
-                                        <li class="side-item">
-                                            <i class="fas fa-times"></i>
-                                            <span>${item}</span>
-                                        </li>
-                                    `).join('')}
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-
-            renderD3Chart() {
-                if (!this.generatedContent.data) return;
-
-                const chartData = this.generatedContent.data;
-                const container = document.getElementById('chart-area');
+            renderChartDirect(container) {
+                const { title, description, unit, chartData } = this.generatedContent;
                 
-                // 清除之前的图表
-                d3.select('#chart-area').selectAll('*').remove();
-
-                const width = container.clientWidth;
-                const height = container.clientHeight;
-                const margin = {top: 20, right: 20, bottom: 40, left: 40};
-                const innerWidth = width - margin.left - margin.right;
-                const innerHeight = height - margin.top - margin.bottom;
-
-                const svg = d3.select('#chart-area')
-                    .append('svg')
-                    .attr('width', width)
-                    .attr('height', height);
-
-                const g = svg.append('g')
-                    .attr('transform', `translate(${margin.left},${margin.top})`);
-
-                const x = d3.scaleBand()
-                    .domain(chartData.map(d => d.category))
-                    .range([0, innerWidth])
-                    .padding(0.3);
-
-                const y = d3.scaleLinear()
-                    .domain([0, d3.max(chartData, d => d.value)])
-                    .range([innerHeight, 0]);
-
-                // 添加坐标轴
-                g.append('g')
-                    .attr('transform', `translate(0,${innerHeight})`)
-                    .call(d3.axisBottom(x))
-                    .selectAll('text')
-                    .attr('fill', '#e2e8f0')
-                    .style('font-size', '12px');
-
-                g.append('g')
-                    .call(d3.axisLeft(y).ticks(5))
-                    .selectAll('text')
-                    .attr('fill', '#e2e8f0')
-                    .style('font-size', '12px');
-
-                // 添加柱状图
-                g.selectAll('.bar')
-                    .data(chartData)
-                    .enter().append('rect')
-                    .attr('class', 'bar')
-                    .attr('x', d => x(d.category))
-                    .attr('y', d => y(d.value))
-                    .attr('width', x.bandwidth())
-                    .attr('height', d => innerHeight - y(d.value))
-                    .attr('fill', '#3b82f6')
-                    .attr('rx', 4)
-                    .attr('ry', 4);
-
-                // 添加数值标签
-                g.selectAll('.label')
-                    .data(chartData)
-                    .enter().append('text')
-                    .attr('class', 'label')
-                    .attr('x', d => x(d.category) + x.bandwidth() / 2)
-                    .attr('y', d => y(d.value) - 5)
-                    .attr('text-anchor', 'middle')
-                    .attr('fill', '#e2e8f0')
-                    .style('font-size', '12px')
-                    .text(d => d.value);
+                // 找到最大值用于计算比例
+                const maxValue = Math.max(...chartData.map(item => item.value));
+                
+                container.innerHTML = `
+                    <div style="
+                        background: white;
+                        height: 100%;
+                        padding: 2rem;
+                        border-radius: 12px;
+                        display: flex;
+                        flex-direction: column;
+                    ">
+                        <div style="text-align: center; margin-bottom: 2rem;">
+                            <h2 style="
+                                font-size: 1.5rem;
+                                font-weight: 600;
+                                color: #1f2937;
+                                margin-bottom: 0.5rem;
+                            ">${title}</h2>
+                            <p style="color: #6b7280; font-size: 0.9rem;">${description}</p>
+                        </div>
+                        
+                        <div style="
+                            flex: 1;
+                            display: flex;
+                            align-items: flex-end;
+                            justify-content: space-around;
+                            padding: 1rem;
+                            border-bottom: 2px solid #e5e7eb;
+                            gap: 1rem;
+                        ">
+                            ${chartData.map((item, index) => {
+                                const height = (item.value / maxValue) * 300; // 最大高度300px
+                                const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+                                const color = colors[index % colors.length];
+                                
+                                return `
+                                    <div style="
+                                        display: flex;
+                                        flex-direction: column;
+                                        align-items: center;
+                                        flex: 1;
+                                        max-width: 120px;
+                                    ">
+                                        <div style="
+                                            width: 60px;
+                                            height: ${height}px;
+                                            background: ${color};
+                                            border-radius: 4px 4px 0 0;
+                                            position: relative;
+                                            display: flex;
+                                            align-items: flex-end;
+                                            justify-content: center;
+                                            color: white;
+                                            font-weight: 600;
+                                            font-size: 0.8rem;
+                                            padding-bottom: 0.5rem;
+                                        ">${item.value}${unit}</div>
+                                        <div style="
+                                            margin-top: 0.5rem;
+                                            text-align: center;
+                                            font-size: 0.8rem;
+                                            color: #374151;
+                                            font-weight: 500;
+                                            line-height: 1.2;
+                                        ">${item.category}</div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
             }
+
+            renderLeftRightDirect(container) {
+                const { title, description, leftSide, rightSide } = this.generatedContent;
+                
+                container.innerHTML = `
+                    <div style="
+                        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+                        color: white;
+                        height: 100%;
+                        padding: 2rem;
+                        border-radius: 12px;
+                    ">
+                        <div style="text-align: center; margin-bottom: 2rem;">
+                            <h2 style="
+                                font-size: 1.5rem;
+                                font-weight: 600;
+                                color: #60a5fa;
+                                margin-bottom: 0.5rem;
+                            ">${title}</h2>
+                            <p style="color: #cbd5e1; font-size: 0.9rem;">${description}</p>
+                        </div>
+                        
+                        <div style="
+                            display: grid;
+                            grid-template-columns: 1fr 1fr;
+                            gap: 2rem;
+                            height: calc(100% - 8rem);
+                        ">
+                            <!-- 左侧 -->
+                            <div style="
+                                background: rgba(16, 185, 129, 0.1);
+                                border: 1px solid rgba(16, 185, 129, 0.3);
+                                border-radius: 12px;
+                                padding: 1.5rem;
+                            ">
+                                <h3 style="
+                                    color: #10b981;
+                                    font-size: 1.1rem;
+                                    font-weight: 600;
+                                    margin-bottom: 1rem;
+                                    display: flex;
+                                    align-items: center;
+                                ">
+                                    <i class="fas fa-thumbs-up" style="margin-right: 0.5rem;"></i>
+                                    ${leftSide.title}
+                                </h3>
+                                <ul style="list-style: none; padding: 0;">
+                                    ${leftSide.items.map(item => `
+                                        <li style="
+                                            margin-bottom: 0.75rem;
+                                            padding-left: 1.5rem;
+                                            position: relative;
+                                            color: #e2e8f0;
+                                            line-height: 1.5;
+                                        ">
+                                            <i class="fas fa-check" style="
+                                                position: absolute;
+                                                left: 0;
+                                                top: 0.2rem;
+                                                color: #10b981;
+                                                font-size: 0.8rem;
+                                            "></i>
+                                            ${item}
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                            </div>
+                            
+                            <!-- 右侧 -->
+                            <div style="
+                                background: rgba(239, 68, 68, 0.1);
+                                border: 1px solid rgba(239, 68, 68, 0.3);
+                                border-radius: 12px;
+                                padding: 1.5rem;
+                            ">
+                                <h3 style="
+                                    color: #ef4444;
+                                    font-size: 1.1rem;
+                                    font-weight: 600;
+                                    margin-bottom: 1rem;
+                                    display: flex;
+                                    align-items: center;
+                                ">
+                                    <i class="fas fa-thumbs-down" style="margin-right: 0.5rem;"></i>
+                                    ${rightSide.title}
+                                </h3>
+                                <ul style="list-style: none; padding: 0;">
+                                    ${rightSide.items.map(item => `
+                                        <li style="
+                                            margin-bottom: 0.75rem;
+                                            padding-left: 1.5rem;
+                                            position: relative;
+                                            color: #e2e8f0;
+                                            line-height: 1.5;
+                                        ">
+                                            <i class="fas fa-times" style="
+                                                position: absolute;
+                                                left: 0;
+                                                top: 0.2rem;
+                                                color: #ef4444;
+                                                font-size: 0.8rem;
+                                            "></i>
+                                            ${item}
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                `;
             
             showDebuggerPromptNotice() {
                 // 在页面顶部显示一个通知
