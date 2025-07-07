@@ -88,15 +88,56 @@
             resultDiv.textContent = '正在检查环境变量配置...';
             
             try {
-                const response = await fetch('/api/test-env');
-                const data = await response.json();
+                console.log('发起环境变量检查请求...');
+                const response = await fetch('/api/test-env', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
                 
-                resultDiv.className = 'result success';
-                resultDiv.textContent = '✅ 环境变量检查结果：\n\n' + JSON.stringify(data, null, 2);
+                console.log('响应状态:', response.status);
+                console.log('响应头:', response.headers);
+                
+                // 先获取原始文本，然后尝试解析为JSON
+                const responseText = await response.text();
+                console.log('响应原始文本:', responseText);
+                
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseError) {
+                    throw new Error(`JSON解析失败。服务器返回: ${responseText.substring(0, 200)}...`);
+                }
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    let displayText = '✅ 环境变量检查结果：\n\n';
+                    displayText += `状态: ${data.status}\n`;
+                    displayText += `配置完整: ${data.allConfigured ? '是' : '否'}\n`;
+                    displayText += `API密钥: ${data.data.hasApiKey ? '已配置' : '未配置'}\n`;
+                    displayText += `端点URL: ${data.data.hasEndpoint ? '已配置' : '未配置'}\n`;
+                    displayText += `端点值: ${data.data.endpointValue}\n`;
+                    
+                    if (data.recommendations && data.recommendations.length > 0) {
+                        displayText += '\n建议:\n';
+                        data.recommendations.forEach(rec => {
+                            displayText += `• ${rec}\n`;
+                        });
+                    }
+                    
+                    displayText += '\n完整响应:\n' + JSON.stringify(data, null, 2);
+                    resultDiv.textContent = displayText;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ 环境变量检查失败 (HTTP ${response.status}):\n\n` + JSON.stringify(data, null, 2);
+                }
                 
             } catch (error) {
+                console.error('环境变量检查出错:', error);
                 resultDiv.className = 'result error';
-                resultDiv.textContent = '❌ 环境变量检查失败：\n' + error.message;
+                resultDiv.textContent = `❌ 环境变量检查失败:\n\n错误类型: ${error.name}\n错误信息: ${error.message}\n\n这通常表示:\n1. Vercel环境变量未正确配置\n2. API函数部署失败\n3. 网络连接问题`;
             }
             
             btn.disabled = false;
