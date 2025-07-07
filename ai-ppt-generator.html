@@ -966,6 +966,16 @@
                     return;
                 }
 
+                // 立即清空预览区域，防止显示旧内容
+                const previewArea = document.getElementById('previewArea');
+                previewArea.innerHTML = `
+                    <div class="empty-preview">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <h3>AI正在生成中...</h3>
+                        <p>请稍候，正在智能分析和生成内容</p>
+                    </div>
+                `;
+
                 const generateBtn = document.getElementById('generateBtn');
                 const btnText = generateBtn.querySelector('span');
                 const btnIcon = generateBtn.querySelector('i');
@@ -987,6 +997,14 @@
                     
                 } catch (error) {
                     console.error('生成失败:', error);
+                    // 恢复空白状态
+                    previewArea.innerHTML = `
+                        <div class="empty-preview">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <h3>生成失败</h3>
+                            <p>请检查网络连接或重试</p>
+                        </div>
+                    `;
                     alert('生成失败，请重试: ' + error.message);
                 } finally {
                     // 恢复按钮状态
@@ -1751,31 +1769,89 @@
 
                 const previewArea = document.getElementById('previewArea');
                 
-                // 先创建iframe，然后监听load事件来发送消息
+                // 立即清空预览区域，防止重复内容
+                previewArea.innerHTML = '';
+                
+                // 添加一个临时的加载提示
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = 'empty-preview';
+                loadingDiv.innerHTML = `
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <h3>正在加载组件...</h3>
+                    <p>请稍候，正在渲染PPT组件</p>
+                `;
+                previewArea.appendChild(loadingDiv);
+                
+                // 创建iframe，添加时间戳避免缓存问题
                 const iframe = document.createElement('iframe');
                 iframe.id = 'component-iframe';
-                iframe.src = `${this.selectedComponent}.html`;
+                iframe.src = `${this.selectedComponent}.html?t=${Date.now()}`;
                 iframe.style.width = '100%';
                 iframe.style.height = '100%';
                 iframe.style.border = 'none';
                 iframe.style.borderRadius = '8px';
+                iframe.style.display = 'none'; // 先隐藏，加载完成后显示
+                
+                // 设置一个超时时间，如果加载时间过长则显示错误
+                const timeout = setTimeout(() => {
+                    console.error('iframe加载超时');
+                    previewArea.innerHTML = `
+                        <div class="empty-preview">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <h3>加载超时</h3>
+                            <p>组件加载时间过长，请重试</p>
+                        </div>
+                    `;
+                }, 10000); // 10秒超时
                 
                 // 监听iframe加载完成事件
                 iframe.onload = () => {
+                    clearTimeout(timeout); // 清除超时定时器
+                    
                     console.log('发送数据到组件:', this.selectedComponent, this.generatedContent);
                     console.log('详细的生成内容:', JSON.stringify(this.generatedContent, null, 2));
+                    
                     // 等待iframe完全加载后再发送消息
                     setTimeout(() => {
-                        iframe.contentWindow.postMessage({
-                            type: 'updateContent',
-                            component: this.selectedComponent,
-                            content: this.generatedContent
-                        }, '*');
-                    }, 100);
+                        try {
+                            iframe.contentWindow.postMessage({
+                                type: 'updateContent',
+                                component: this.selectedComponent,
+                                content: this.generatedContent
+                            }, '*');
+                            
+                            // 显示iframe，隐藏加载提示
+                            iframe.style.display = 'block';
+                            if (loadingDiv && loadingDiv.parentNode) {
+                                loadingDiv.remove();
+                            }
+                        } catch (error) {
+                            console.error('发送消息到iframe失败:', error);
+                            previewArea.innerHTML = `
+                                <div class="empty-preview">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <h3>渲染失败</h3>
+                                    <p>组件渲染出现错误，请重试</p>
+                                </div>
+                            `;
+                        }
+                    }, 200); // 增加等待时间确保iframe完全准备好
                 };
                 
-                // 清空预览区域并添加新的iframe
-                previewArea.innerHTML = '';
+                // 监听iframe加载错误
+                iframe.onerror = () => {
+                    clearTimeout(timeout);
+                    console.error('iframe加载失败');
+                    previewArea.innerHTML = `
+                        <div class="empty-preview">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <h3>加载失败</h3>
+                            <p>组件文件加载失败，请检查文件是否存在</p>
+                        </div>
+                    `;
+                };
+                
+                // 添加iframe到预览区域
                 previewArea.appendChild(iframe);
             }
 
