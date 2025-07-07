@@ -986,6 +986,10 @@
                 btnText.textContent = '生成中...';
 
                 try {
+                    // 先测试API连接
+                    console.log('开始测试API连接...');
+                    await this.testAPIConnection();
+                    
                     // 调用Azure OpenAI API
                     const structuredContent = await this.callAzureOpenAI(userInput, this.selectedComponent);
                     
@@ -1011,6 +1015,32 @@
                     generateBtn.disabled = false;
                     btnIcon.className = 'fas fa-magic';
                     btnText.textContent = '生成预览';
+                }
+            }
+
+            async testAPIConnection() {
+                try {
+                    console.log('测试API连接...');
+                    const response = await fetch('/api/test-env', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const testResult = await response.json();
+                        console.log('API连接测试结果:', testResult);
+                        
+                        if (!testResult.allConfigured) {
+                            console.error('环境变量配置不完整:', testResult.data);
+                            alert('API配置错误：环境变量未正确设置，将使用模拟数据');
+                        }
+                    } else {
+                        console.error('API连接测试失败:', response.status);
+                    }
+                } catch (error) {
+                    console.error('API连接测试异常:', error);
                 }
             }
 
@@ -1066,7 +1096,19 @@
 
                     if (!response.ok) {
                         console.error('API响应错误:', response.status, response.statusText);
+                        // 尝试读取错误信息
+                        try {
+                            const errorData = await response.json();
+                            console.error('API错误详情:', errorData);
+                            
+                            // 显示用户友好的错误信息
+                            alert(`API调用失败: ${response.status} - ${errorData.error || response.statusText}\n请检查网络连接和API配置`);
+                        } catch (e) {
+                            console.error('无法解析API错误响应');
+                            alert(`API调用失败: ${response.status} - ${response.statusText}\n请检查网络连接和API配置`);
+                        }
                         // 如果API调用失败，回退到模拟数据
+                        console.warn('API调用失败，使用模拟数据');
                         return this.generateMockData(userInput, componentType);
                     }
 
@@ -1096,7 +1138,10 @@
                     }
                 } catch (error) {
                     console.error('API调用错误:', error);
+                    // 显示详细的错误信息给用户
+                    alert(`网络请求失败: ${error.message}\n请检查:\n1. 网络连接是否正常\n2. Vercel环境变量是否配置正确\n3. API端点是否可访问`);
                     // 如果网络错误，回退到模拟数据
+                    console.warn('网络错误，使用模拟数据');
                     return this.generateMockData(userInput, componentType);
                 }
             }
