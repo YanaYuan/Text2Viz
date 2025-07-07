@@ -28,41 +28,67 @@ export default async function handler(req, res) {
         // 构建完整的API端点URL
         // 确保baseEndpoint格式正确，移除可能的尾部斜杠
         const cleanEndpoint = baseEndpoint.replace(/\/$/, '');
-        const fullEndpoint = `${cleanEndpoint}/openai/deployments/gpt-4o/chat/completions?api-version=2024-02-15-preview`;
         
-        // 添加详细日志（生产环境可以移除）
-        console.log('API调用信息:', {
-            endpoint: fullEndpoint,
-            hasApiKey: !!apiKey,
-            apiKeyLength: apiKey.length
-        });
+        // 常见的部署名称和API版本组合
+        const deploymentConfigs = [
+            { deployment: 'gpt-4', apiVersion: '2024-02-01' },
+            { deployment: 'gpt-35-turbo', apiVersion: '2024-02-01' },
+            { deployment: 'gpt-4o', apiVersion: '2024-02-01' },
+            { deployment: 'gpt-4', apiVersion: '2023-12-01-preview' },
+            { deployment: 'gpt-35-turbo', apiVersion: '2023-12-01-preview' }
+        ];
 
-        const response = await fetch(fullEndpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'api-key': apiKey
-            },
-            body: JSON.stringify(req.body)
-        });
-
-        const data = await response.json();
+        let lastError = null;
         
-        if (!response.ok) {
-            console.error('API响应错误:', {
-                status: response.status,
-                statusText: response.statusText,
-                data: data,
-                endpoint: fullEndpoint
-            });
-            return res.status(response.status).json({
-                error: `API调用失败: ${response.status} - ${response.statusText}`,
-                details: data,
-                endpoint: fullEndpoint
-            });
+        // 尝试不同的配置组合
+        for (const config of deploymentConfigs) {
+            const fullEndpoint = `${cleanEndpoint}/openai/deployments/${config.deployment}/chat/completions?api-version=${config.apiVersion}`;
+            
+            console.log(`尝试配置: ${config.deployment} with API版本 ${config.apiVersion}`);
+            
+            try {
+                const response = await fetch(fullEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'api-key': apiKey
+                    },
+                    body: JSON.stringify(req.body)
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    console.log(`✅ 成功使用配置: ${config.deployment} - ${config.apiVersion}`);
+                    return res.status(200).json(data);
+                } else {
+                    console.log(`❌ 配置失败: ${config.deployment} - ${response.status}`);
+                    lastError = {
+                        config,
+                        status: response.status,
+                        statusText: response.statusText,
+                        data: data,
+                        endpoint: fullEndpoint
+                    };
+                }
+            } catch (error) {
+                console.log(`❌ 配置异常: ${config.deployment} - ${error.message}`);
+                lastError = {
+                    config,
+                    error: error.message,
+                    endpoint: fullEndpoint
+                };
+            }
         }
-
-        res.status(200).json(data);
+        
+        // 如果所有配置都失败，返回最后一个错误
+        console.error('所有配置都失败了:', lastError);
+        return res.status(lastError.status || 500).json({
+            error: '所有部署配置都失败',
+            lastError: lastError,
+            suggestion: '请检查Azure OpenAI资源中的实际部署名称',
+            testedConfigs: deploymentConfigs
+        });
     } catch (error) {
         console.error('API调用异常:', {
             error: error.message,
