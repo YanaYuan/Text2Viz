@@ -16,6 +16,22 @@
       "dest": "/api/$1"
     },
     {
+      "src": "/test-api.html",
+      "dest": "/test-api.html"
+    },
+    {
+      "src": "/api-config-tester.html",
+      "dest": "/api-config-tester.html"
+    },
+    {
+      "src": "/",
+      "dest": "/ai-ppt-generator.html"
+    },
+    {
+      "src": "/(.*\\.html)",
+      "dest": "/$1"
+    },
+    {
       "src": "/(.*)",
       "dest": "/ai-ppt-generator.html"
     }
